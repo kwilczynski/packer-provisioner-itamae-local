@@ -22,11 +22,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/mitchellh/packer/common"
 	"github.com/mitchellh/packer/helper/config"
 	"github.com/mitchellh/packer/packer"
+	"github.com/mitchellh/packer/provisioner"
 	"github.com/mitchellh/packer/template/interpolate"
 )
 
@@ -57,7 +59,8 @@ type Config struct {
 }
 
 type Provisioner struct {
-	config Config
+	config        Config
+	guestCommands *provisioner.GuestCommands
 }
 
 type ExecuteTemplate struct {
@@ -83,6 +86,11 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 			},
 		},
 	}, raws...)
+	if err != nil {
+		return err
+	}
+
+	p.guestCommands, err = provisioner.NewGuestCommands(p.guestOStype(), !p.config.PreventSudo)
 	if err != nil {
 		return err
 	}
@@ -118,7 +126,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	var errs *packer.MultiError
 
 	if p.config.SourceDir != "" {
-		if err := validateDirConfig(p.config.SourceDir, "source_directory"); err != nil {
+		if err := p.validateDirConfig(p.config.SourceDir, "source_directory"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
@@ -128,23 +136,23 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 			fmt.Errorf("A recipes must be specified."))
 	} else {
 		for idx, path := range p.config.Recipes {
-			path = withDirPrefix(path, p.config.SourceDir)
-			if err := validateFileConfig(path, fmt.Sprintf("recipes[%d]", idx)); err != nil {
+			path = p.withDirPrefix(path, p.config.SourceDir)
+			if err := p.validateFileConfig(path, fmt.Sprintf("recipes[%d]", idx)); err != nil {
 				errs = packer.MultiErrorAppend(errs, err)
 			}
 		}
 	}
 
 	if p.config.JsonPath != "" {
-		jsonPath := withDirPrefix(p.config.JsonPath, p.config.SourceDir)
-		if err := validateFileConfig(jsonPath, "json_path"); err != nil {
+		jsonPath := p.withDirPrefix(p.config.JsonPath, p.config.SourceDir)
+		if err := p.validateFileConfig(jsonPath, "json_path"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
 
 	if p.config.YamlPath != "" {
-		yamlPath := withDirPrefix(p.config.YamlPath, p.config.SourceDir)
-		if err := validateFileConfig(yamlPath, "yaml_path"); err != nil {
+		yamlPath := p.withDirPrefix(p.config.YamlPath, p.config.SourceDir)
+		if err := p.validateFileConfig(yamlPath, "yaml_path"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
@@ -169,17 +177,17 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	ui.Say("Provisioning with Itamae...")
 
+	ui.Message("Creating staging directory...")
+	if err := p.createDir(ui, comm, p.config.StagingDir); err != nil {
+		return fmt.Errorf("Error creating staging directory: %s", err)
+	}
+
 	if p.config.SourceDir != "" {
 		ui.Message("Uploading source directory to staging directory...")
 		if err := p.uploadDir(ui, comm, p.config.StagingDir, p.config.SourceDir); err != nil {
 			return fmt.Errorf("Error uploading source directory: %s", err)
 		}
 	} else {
-		ui.Message("Creating staging directory...")
-		if err := p.createDir(ui, comm, p.config.StagingDir); err != nil {
-			return fmt.Errorf("Error creating staging directory: %s", err)
-		}
-
 		ui.Message("Uploading recipes...")
 		for _, src := range p.config.Recipes {
 			dst := filepath.ToSlash(filepath.Join(p.config.StagingDir, src))
@@ -206,14 +214,28 @@ func (p *Provisioner) Cancel() {
 	os.Exit(0)
 }
 
-func withDirPrefix(path, prefix string) string {
+func (p *Provisioner) guestOStype() string {
+	unixes := map[string]bool{
+		"darwin":  true,
+		"freebsd": true,
+		"linux":   true,
+		"openbsd": true,
+	}
+
+	if unixes[runtime.GOOS] {
+		return "unix"
+	}
+	return runtime.GOOS
+}
+
+func (p *Provisioner) withDirPrefix(path, prefix string) string {
 	if prefix != "" {
 		path = filepath.Join(prefix, path)
 	}
 	return filepath.ToSlash(path)
 }
 
-func validateDirConfig(path, config string) error {
+func (p *Provisioner) validateDirConfig(path, config string) error {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%s: %s is invalid: %s", config, path, err)
@@ -223,7 +245,7 @@ func validateDirConfig(path, config string) error {
 	return nil
 }
 
-func validateFileConfig(path, config string) error {
+func (p *Provisioner) validateFileConfig(path, config string) error {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%s: %s is invalid: %s", config, path, err)
@@ -267,38 +289,48 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 	}
 
 	if cmd.ExitStatus != 0 && !p.config.IgnoreExitCodes {
-		return fmt.Errorf("Non-zero exit status: %d", cmd.ExitStatus)
+		return fmt.Errorf("Non-zero exit status. See output above for more information.")
 	}
-
 	return nil
 }
 
 func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
-		Command: fmt.Sprintf("mkdir -p '%s'", dir),
+		Command: p.guestCommands.CreateDir(dir),
 	}
 
+	ui.Message(fmt.Sprintf("Creating directory: %s", dir))
 	if err := cmd.StartWithUi(comm, ui); err != nil {
 		return err
 	}
-
 	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status. See output above for more info.")
+		return fmt.Errorf("Non-zero exit status. See output above for more information.")
+	}
+
+	cmd = &packer.RemoteCmd{
+		Command: p.guestCommands.Chmod(dir, "0777"),
+	}
+	if err := cmd.StartWithUi(comm, ui); err != nil {
+		return err
+	}
+	if cmd.ExitStatus != 0 {
+		return fmt.Errorf("Non-zero exit status. See output above for more information.")
 	}
 	return nil
 }
 
 func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
-		Command: fmt.Sprintf("rm -rf '%s'", dir),
+		Command: p.guestCommands.RemoveDir(dir),
 	}
 
+	ui.Message(fmt.Sprintf("Removing directory: %s", dir))
 	if err := cmd.StartWithUi(comm, ui); err != nil {
 		return err
 	}
 
 	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status. See output above for more info.")
+		return fmt.Errorf("Non-zero exit status. See output above for more information.")
 	}
 	return nil
 }
@@ -310,17 +342,14 @@ func (p *Provisioner) uploadFile(ui packer.Ui, comm packer.Communicator, dst, sr
 	}
 	defer f.Close()
 
+	ui.Message(fmt.Sprintf("Uploading file: %s", src))
 	return comm.Upload(dst, f, nil)
 }
 
 func (p *Provisioner) uploadDir(ui packer.Ui, comm packer.Communicator, dst, src string) error {
-	if err := p.createDir(ui, comm, dst); err != nil {
-		return err
-	}
-
+	ui.Message(fmt.Sprintf("Uploading directory: %s", src))
 	if ok := strings.HasSuffix(src, "/"); !ok {
 		src += "/"
 	}
-
 	return comm.UploadDir(dst, src, nil)
 }
