@@ -1,5 +1,5 @@
 /*
- * itamae.go
+ * provisioner.go
  *
  * Copyright 2016 Krzysztof Wilczynski
  *
@@ -133,7 +133,10 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 
 	if p.config.Recipes == nil {
 		errs = packer.MultiErrorAppend(errs,
-			fmt.Errorf("A recipes must be specified."))
+			fmt.Errorf("A list of recipes must be specified."))
+	} else if len(p.config.Recipes) == 0 {
+		errs = packer.MultiErrorAppend(errs,
+			fmt.Errorf("A list of recipes cannot be empty."))
 	} else {
 		for idx, path := range p.config.Recipes {
 			path = p.withDirPrefix(path, p.config.SourceDir)
