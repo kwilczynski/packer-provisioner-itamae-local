@@ -18,6 +18,22 @@
 
 package itamae
 
+import (
+	"io/ioutil"
+
+	"github.com/mitchellh/packer/packer"
+)
+
 func testConfig() map[string]interface{} {
 	return make(map[string]interface{})
+}
+
+func testUi() *packer.MachineReadableUi {
+	return &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+}
+
+func testCommunicator() *packer.MockCommunicator {
+	return &packer.MockCommunicator{}
 }

@@ -19,10 +19,12 @@
 package itamae
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
+	//"strings"
 	"testing"
 
 	"github.com/mitchellh/packer/packer"
@@ -234,9 +236,11 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 	}
 
 	config["environment_vars"] = []string{
-		"test=variable",
-		"WORKING=yes",
 		"EMPTY=",
+		"UPPER=yes",
+		"test1=variable",
+		"test2=(abc=def)",
+		"test3=baz=quux",
 	}
 
 	err = p.Prepare(config)
@@ -245,9 +249,11 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 	}
 
 	expected := []string{
-		"test='variable'",
-		"WORKING='yes'",
 		"EMPTY=''",
+		"UPPER='yes'",
+		"test1='variable'",
+		"test2='(abc=def)'",
+		"test3='baz=quux'",
 	}
 
 	if ok := reflect.DeepEqual(p.config.Vars, expected); !ok {
@@ -256,8 +262,6 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 
 	p = Provisioner{}
 	delete(config, "environment_vars")
-
-	// config["environment_vars"] = []string{"keyone=valueone", "keytwo=value\ntwo"}
 
 	config["environment_vars"] = []string{
 		"one=two",
@@ -281,9 +285,88 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 }
 
 func TestProvisionerPrepare_ExtraArguments(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	arguments := []string{
+		"--argument",
+		"--option=value",
+		"some-string",
+	}
+	config["extra_arguments"] = arguments
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	if ok := reflect.DeepEqual(p.config.ExtraArguments, arguments); !ok {
+		t.Errorf("value given %v, want %v", p.config.ExtraArguments, arguments)
+	}
 }
 
 func TestProvisionerPrepare_StagingDirectory(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["staging_directory"] = os.TempDir()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	expected := os.TempDir()
+	if p.config.StagingDir != expected {
+		t.Errorf("value given %v, want %v", p.config.StagingDir, expected)
+	}
 }
 
 func TestProvisionerPrepare_SourceDirectory(t *testing.T) {
@@ -334,15 +417,215 @@ func TestProvisionerPrepare_SourceDirectory(t *testing.T) {
 }
 
 func TestProvisionerPrepare_Recipes(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	path1, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	path2, err := ioutil.TempFile("", "role.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	directory, err := ioutil.TempDir("", "recipes")
+	if err != nil {
+		t.Fatalf("unable to create temporary directory: %s", err)
+	}
+
+	path3, err := ioutil.TempFile(directory, "test.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer func() {
+		os.Remove(path1.Name())
+		os.Remove(path2.Name())
+		os.Remove(path3.Name())
+		os.Remove(directory)
+	}()
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		path1.Name(),
+		path2.Name(),
+		path3.Name(),
+	}
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	expected := []string{
+		path1.Name(),
+		path2.Name(),
+		path3.Name(),
+	}
+
+	if ok := reflect.DeepEqual(p.config.Recipes, expected); !ok {
+		t.Errorf("value given %v, want %v", p.config.Recipes, expected)
+	}
 }
 
 func TestProvisionerPrepare_JsonPath(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	jsonFile, err := ioutil.TempFile("", "node.json")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(jsonFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["json_path"] = os.TempDir()
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if json_path points to a directory")
+	}
+
+	p = Provisioner{}
+	delete(config, "json_path")
+
+	config["json_path"] = jsonFile.Name()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
 }
 
 func TestProvisionerPrepare_YamlPath(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	yamlFile, err := ioutil.TempFile("", "node.yml")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(yamlFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["yaml_path"] = os.TempDir()
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if yaml_path points to a directory")
+	}
+
+	p = Provisioner{}
+	delete(config, "json_path")
+
+	config["yaml_path"] = yamlFile.Name()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
 }
 
-func TestProvisionerProvision_Command(t *testing.T) {
+func TestProvisionerProvision_Defaults(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi()
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' %s",
+		recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
 func TestProvisionerProvision_EnvironmentVars(t *testing.T) {
@@ -369,5 +652,8 @@ func TestProvisionerProvision_ExtraArguments(t *testing.T) {
 func TestProvisionerProvision_Recipes(t *testing.T) {
 }
 
-func TestProvisionerProvision_Sudo(t *testing.T) {
+func TestProvisionerProvision_IgnoreExitCodes(t *testing.T) {
+}
+
+func TestProvisionerProvision_PreventSudo(t *testing.T) {
 }
