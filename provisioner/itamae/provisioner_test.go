@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	//"strings"
 	"testing"
 
 	"github.com/mitchellh/packer/packer"
@@ -47,7 +46,7 @@ func TestProvisionerPrepare_InvalidKey(t *testing.T) {
 	config["invalid-key"] = true
 	err := p.Prepare(config)
 	if err == nil {
-		t.Fatal("should be an error when key is invalid")
+		t.Errorf("should be an error when key is invalid")
 	}
 }
 
@@ -66,14 +65,13 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -82,7 +80,7 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipe file points to a directory")
+		t.Errorf("should be an error if recipe file points to a directory")
 	}
 
 	config["recipes"] = []string{
@@ -91,7 +89,7 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipe file does not exist")
+		t.Errorf("should be an error if recipe file does not exist")
 	}
 
 	config["recipes"] = []string{
@@ -100,7 +98,7 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	kind = reflect.ValueOf(p.config.Vars).Kind()
@@ -172,8 +170,8 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 	}
 
 	p = Provisioner{}
-
 	delete(config, "recipes")
+
 	p.Prepare(config)
 
 	kind = reflect.ValueOf(p.config.Recipes).Kind()
@@ -202,14 +200,13 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -223,7 +220,7 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if a bad environment variable is present")
+		t.Errorf("should be an error if a bad environment variable is present")
 	}
 
 	config["environment_vars"] = []string{
@@ -232,7 +229,7 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if a bad environment variable is present")
+		t.Errorf("should be an error if a bad environment variable is present")
 	}
 
 	config["environment_vars"] = []string{
@@ -245,7 +242,7 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	expected := []string{
@@ -298,14 +295,13 @@ func TestProvisionerPrepare_ExtraArguments(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -317,11 +313,11 @@ func TestProvisionerPrepare_ExtraArguments(t *testing.T) {
 		"--option=value",
 		"some-string",
 	}
-	config["extra_arguments"] = arguments
 
+	config["extra_arguments"] = arguments
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	if ok := reflect.DeepEqual(p.config.ExtraArguments, arguments); !ok {
@@ -343,14 +339,13 @@ func TestProvisionerPrepare_StagingDirectory(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -360,7 +355,7 @@ func TestProvisionerPrepare_StagingDirectory(t *testing.T) {
 	config["staging_directory"] = os.TempDir()
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	expected := os.TempDir()
@@ -383,14 +378,13 @@ func TestProvisionerPrepare_SourceDirectory(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -400,19 +394,19 @@ func TestProvisionerPrepare_SourceDirectory(t *testing.T) {
 	config["source_directory"] = recipeFile.Name()
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if source_directory points to a file")
+		t.Errorf("should be an error if source_directory points to a file")
 	}
 
 	config["source_directory"] = "/does/not/exist"
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if source_directory does not exist")
+		t.Errorf("should be an error if source_directory does not exist")
 	}
 
 	config["source_directory"] = os.TempDir()
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 }
 
@@ -451,14 +445,13 @@ func TestProvisionerPrepare_Recipes(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -469,7 +462,7 @@ func TestProvisionerPrepare_Recipes(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	expected := []string{
@@ -504,14 +497,13 @@ func TestProvisionerPrepare_JsonPath(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -521,7 +513,7 @@ func TestProvisionerPrepare_JsonPath(t *testing.T) {
 	config["json_path"] = os.TempDir()
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if json_path points to a directory")
+		t.Errorf("should be an error if json_path points to a directory")
 	}
 
 	p = Provisioner{}
@@ -530,7 +522,7 @@ func TestProvisionerPrepare_JsonPath(t *testing.T) {
 	config["json_path"] = jsonFile.Name()
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 }
 
@@ -555,14 +547,13 @@ func TestProvisionerPrepare_YamlPath(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is missing")
+		t.Errorf("should be an error if recipes list is missing")
 	}
 
 	config["recipes"] = []string{}
-
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if recipes list is empty")
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	config["recipes"] = []string{
@@ -572,7 +563,7 @@ func TestProvisionerPrepare_YamlPath(t *testing.T) {
 	config["yaml_path"] = os.TempDir()
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatalf("should be an error if yaml_path points to a directory")
+		t.Errorf("should be an error if yaml_path points to a directory")
 	}
 
 	p = Provisioner{}
@@ -581,7 +572,7 @@ func TestProvisionerPrepare_YamlPath(t *testing.T) {
 	config["yaml_path"] = yamlFile.Name()
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 }
 
@@ -605,7 +596,7 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	p.config.PackerBuildName = "virtualbox"
@@ -613,7 +604,7 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 
 	err = p.Provision(ui, comm)
 	if err != nil {
-		t.Fatalf("should not error, but got: %s", err)
+		t.Errorf("should not error, but got: %s", err)
 	}
 
 	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
