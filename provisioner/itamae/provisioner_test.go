@@ -98,7 +98,7 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not an error, but got: %s", err)
+		t.Fatalf("should not error, but got: %s", err)
 	}
 
 	kind = reflect.ValueOf(p.config.Vars).Kind()
@@ -187,6 +187,97 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 }
 
 func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["environment_vars"] = []string{
+		"badvariable",
+		"good=variable",
+	}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if a bad environment variable is present")
+	}
+
+	config["environment_vars"] = []string{
+		"=bad",
+	}
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("should be an error if a bad environment variable is present")
+	}
+
+	config["environment_vars"] = []string{
+		"test=variable",
+		"WORKING=yes",
+		"EMPTY=",
+	}
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("should not error, but got: %s", err)
+	}
+
+	expected := []string{
+		"test='variable'",
+		"WORKING='yes'",
+		"EMPTY=''",
+	}
+
+	if ok := reflect.DeepEqual(p.config.Vars, expected); !ok {
+		t.Errorf("value given %v, want %v", p.config.Vars, expected)
+	}
+
+	p = Provisioner{}
+	delete(config, "environment_vars")
+
+	// config["environment_vars"] = []string{"keyone=valueone", "keytwo=value\ntwo"}
+
+	config["environment_vars"] = []string{
+		"one=two",
+		"two=three\nfour",
+		"four='five'",
+		"five='six\nseven'",
+	}
+
+	p.Prepare(config)
+
+	expected = []string{
+		"one='two'",
+		"two='three\nfour'",
+		"four=''\"'\"'five'\"'\"''",
+		"five=''\"'\"'six\nseven'\"'\"''",
+	}
+
+	if ok := reflect.DeepEqual(p.config.Vars, expected); !ok {
+		t.Errorf("value given %v, want %v", p.config.Vars, expected)
+	}
 }
 
 func TestProvisionerPrepare_ExtraArguments(t *testing.T) {
@@ -238,7 +329,7 @@ func TestProvisionerPrepare_SourceDirectory(t *testing.T) {
 	config["source_directory"] = os.TempDir()
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not an error, but got: %s", err)
+		t.Fatalf("should not error, but got: %s", err)
 	}
 }
 
