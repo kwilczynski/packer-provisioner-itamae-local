@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -728,7 +729,7 @@ func TestProvisionerProvision_ExtraArguments(t *testing.T) {
 		"--argument",
 		"--option=value",
 		"some-string",
-		fmt.Sprintf("--date=%s", time.Now()),
+		fmt.Sprintf("--date='%s'", time.Now()),
 	}
 
 	config["extra_arguments"] = arguments
@@ -774,4 +775,25 @@ func TestProvisionerProvision_IgnoreExitCodes(t *testing.T) {
 }
 
 func TestProvisionerProvision_PreventSudo(t *testing.T) {
+}
+
+func TestCancel(t *testing.T) {
+	var p Provisioner
+
+	if os.Getenv("TEST_CANCEL") == "1" {
+		p.Cancel()
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCancel")
+	cmd.Env = append(os.Environ(), "TEST_CANCEL=1")
+
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && e.Success() {
+		return
+	}
+
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
 }
