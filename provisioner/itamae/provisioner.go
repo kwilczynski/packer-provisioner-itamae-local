@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	DefaultGem        = "itamae"
 	DefaultCommand    = "itamae"
 	DefaultStagingDir = "/tmp/packer-itamae"
 )
@@ -40,8 +41,11 @@ const (
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
+	Gem             string
 	Command         string
 	Vars            []string `mapstructure:"environment_vars"`
+	InstallCommand  string   `mapstructure:"install_command"`
+	SkipInstall     bool     `mapstructure:"skip_install"`
 	ExecuteCommand  string   `mapstructure:"execute_command"`
 	ExtraArguments  []string `mapstructure:"extra_arguments"`
 	PreventSudo     bool     `mapstructure:"prevent_sudo"`
@@ -76,12 +80,18 @@ type ExecuteTemplate struct {
 	Sudo           bool
 }
 
+type InstallTemplate struct {
+	Gem  string
+	Sudo bool
+}
+
 func (p *Provisioner) Prepare(raws ...interface{}) error {
 	err := config.Decode(&p.config, &config.DecodeOpts{
 		Interpolate:        true,
 		InterpolateContext: &p.config.ctx,
 		InterpolateFilter: &interpolate.RenderFilter{
 			Exclude: []string{
+				"install_command",
 				"execute_command",
 			},
 		},
@@ -95,12 +105,21 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		return err
 	}
 
-	if p.config.Vars == nil {
-		p.config.Vars = make([]string, 0)
+	if p.config.Gem == "" {
+		p.config.Gem = DefaultGem
 	}
 
 	if p.config.Command == "" {
 		p.config.Command = DefaultCommand
+	}
+
+	if p.config.Vars == nil {
+		p.config.Vars = make([]string, 0)
+	}
+
+	if p.config.InstallCommand == "" {
+		p.config.InstallCommand = "{{ if .Sudo}}sudo -E {{end}}" +
+			"gem install --quiet --no-document --no-suggestions {{.Gem}}"
 	}
 
 	if p.config.ExecuteCommand == "" {
@@ -180,6 +199,12 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	ui.Say("Provisioning with Itamae...")
 
+	if !p.config.SkipInstall {
+		if err := p.installItamae(ui, comm); err != nil {
+			return fmt.Errorf("Error installing Itamae: %s", err)
+		}
+	}
+
 	ui.Message("Creating staging directory...")
 	if err := p.createDir(ui, comm, p.config.StagingDir); err != nil {
 		return fmt.Errorf("Error creating staging directory: %s", err)
@@ -258,7 +283,37 @@ func (p *Provisioner) validateFileConfig(path, config string) error {
 	return nil
 }
 
+func (p *Provisioner) installItamae(ui packer.Ui, comm packer.Communicator) error {
+	ui.Message("Installing Itamae...")
+
+	p.config.ctx.Data = &InstallTemplate{
+		Gem:  p.config.Gem,
+		Sudo: !p.config.PreventSudo,
+	}
+
+	command, err := interpolate.Render(p.config.InstallCommand, &p.config.ctx)
+	if err != nil {
+		return err
+	}
+
+	cmd := &packer.RemoteCmd{
+		Command: command,
+	}
+
+	ui.Message(fmt.Sprintf("Executing: %s", command))
+	if err := cmd.StartWithUi(comm, ui); err != nil {
+		return err
+	}
+
+	if cmd.ExitStatus != 0 {
+		return fmt.Errorf("Non-zero exit status. See output above for more information.")
+	}
+	return nil
+}
+
 func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) error {
+	ui.Message("Executing Itamae...")
+
 	envVars := make([]string, len(p.config.Vars)+2)
 	envVars[0] = fmt.Sprintf("PACKER_BUILD_NAME='%s'", p.config.PackerBuildName)
 	envVars[1] = fmt.Sprintf("PACKER_BUILDER_TYPE='%s'", p.config.PackerBuilderType)
@@ -286,7 +341,7 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 		Command: command,
 	}
 
-	ui.Message(fmt.Sprintf("Executing Itamae: %s", command))
+	ui.Message(fmt.Sprintf("Executing: %s", command))
 	if err := cmd.StartWithUi(comm, ui); err != nil {
 		return err
 	}
@@ -306,6 +361,7 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 	if err := cmd.StartWithUi(comm, ui); err != nil {
 		return err
 	}
+
 	if cmd.ExitStatus != 0 {
 		return fmt.Errorf("Non-zero exit status. See output above for more information.")
 	}
@@ -316,6 +372,7 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 	if err := cmd.StartWithUi(comm, ui); err != nil {
 		return err
 	}
+
 	if cmd.ExitStatus != 0 {
 		return fmt.Errorf("Non-zero exit status. See output above for more information.")
 	}

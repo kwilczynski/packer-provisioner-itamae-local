@@ -19,6 +19,7 @@
 package itamae
 
 import (
+	"io"
 	"io/ioutil"
 
 	"github.com/mitchellh/packer/packer"
@@ -28,9 +29,12 @@ func testConfig() map[string]interface{} {
 	return make(map[string]interface{})
 }
 
-func testUi() *packer.MachineReadableUi {
+func testUi(writer io.Writer) *packer.MachineReadableUi {
+	if writer == nil {
+		writer = ioutil.Discard
+	}
 	return &packer.MachineReadableUi{
-		Writer: ioutil.Discard,
+		Writer: writer,
 	}
 }
 

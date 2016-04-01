@@ -19,6 +19,7 @@
 package itamae
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/packer/packer"
+	"github.com/mitchellh/packer/template/interpolate"
 )
 
 func TestProvisioner(t *testing.T) {
@@ -104,15 +106,31 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
+	if p.config.Gem != DefaultGem {
+		t.Errorf("incorrect gem, given \"%s\", want \"%s\"",
+			p.config.Gem, DefaultGem)
+	}
+
+	if p.config.Command != DefaultCommand {
+		t.Errorf("incorrect command, given \"%s\", want \"%s\"",
+			p.config.Command, DefaultCommand)
+	}
+
 	kind = reflect.ValueOf(p.config.Vars).Kind()
 	if kind != reflect.Slice || len(p.config.Vars) != 0 {
 		t.Errorf("incorrect environment_vars, given {%v %d}, want {%v %d}",
 			kind, len(p.config.Vars), reflect.Slice, 0)
 	}
 
-	if p.config.Command != DefaultCommand {
-		t.Errorf("incorrect command, given \"%s\", want \"%s\"",
-			p.config.Command, DefaultCommand)
+	kind = reflect.ValueOf(p.config.InstallCommand).Kind()
+	if kind != reflect.String || p.config.InstallCommand == "" {
+		t.Errorf("incorrect install_command, given {%v %d}, want {%v > 0}",
+			kind, len(p.config.InstallCommand), reflect.String)
+	}
+
+	if p.config.SkipInstall {
+		t.Errorf("incorrect skip_install, given: \"%v\", want \"%v\"",
+			p.config.SkipInstall, false)
 	}
 
 	kind = reflect.ValueOf(p.config.ExecuteCommand).Kind()
@@ -593,7 +611,9 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi()
+	buffer := new(bytes.Buffer)
+
+	ui := testUi(buffer)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -620,7 +640,23 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	p.config.ctx.Data = &InstallTemplate{
+		Gem:  p.config.Gem,
+		Sudo: !p.config.PreventSudo,
+	}
+
+	installCommand, err := interpolate.Render(p.config.InstallCommand, &p.config.ctx)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := "sudo -E gem install --quiet --no-document --no-suggestions itamae"
+	if ok := strings.Contains(buffer.String(), expected); !ok {
+		t.Errorf("incorrect install_command, given: \"%v\", want \"%v\"",
+			installCommand, expected)
+	}
+
+	expected = fmt.Sprintf("cd /tmp/packer-itamae && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --color='false' %s",
@@ -632,11 +668,153 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 	}
 }
 
+func TestProvisionerProvision_SkipInstall(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	buffer := new(bytes.Buffer)
+
+	ui := testUi(buffer)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["install_command"] = "this should not be present"
+	config["skip_install"] = true
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := "this should not be present"
+	if ok := strings.Contains(buffer.String(), expected); ok {
+		t.Errorf("should not include install_command, but got: %s", buffer)
+	}
+}
+
+func TestProvisionerProvision_InstallCommand(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	buffer := new(bytes.Buffer)
+
+	ui := testUi(buffer)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["install_command"] = "{{}}"
+	err = p.Prepare(config)
+	if err == nil {
+		t.Errorf("should be an error if install_command contains an illegal value")
+	}
+
+	p = Provisioner{}
+	delete(config, "install_command")
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	config["install_command"] = "gem install itamae -v 1.9.5"
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := "gem install itamae -v 1.9.5"
+	if ok := strings.Contains(buffer.String(), expected); !ok {
+		t.Errorf("incorrect install_command, given: \"%v\", want \"%v\"",
+			p.config.InstallCommand, expected)
+	}
+}
+
+func TestProvisionerProvision_ExecuteCommand(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["execute_command"] = "{{}}"
+	err = p.Prepare(config)
+	if err == nil {
+		t.Errorf("should be an error if execute_command contains an illegal value")
+	}
+
+	p = Provisioner{}
+	delete(config, "execute_command")
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	config["execute_command"] = "{{.Vars}} {{.Command}} local {{.Recipes}}"
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' itamae local %s", recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
+}
+
 func TestProvisionerProvision_EnvironmentVars(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi()
+	ui := testUi(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -693,6 +871,132 @@ func TestProvisionerProvision_EnvironmentVars(t *testing.T) {
 }
 
 func TestProvisionerProvision_StagingDirectory(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	directory, err := ioutil.TempDir("", "staging")
+	if err != nil {
+		t.Fatalf("unable to create temporary directory: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(directory)
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["staging_directory"] = directory
+	config["clean_staging_directory"] = true
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	if p.config.StagingDir != directory {
+		t.Errorf("value given %v, want %v", p.config.StagingDir, directory)
+	}
+
+	if !p.config.CleanStagingDir {
+		t.Errorf("value given %v, want %v", p.config.CleanStagingDir, true)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p = Provisioner{}
+	delete(config, "clean_staging_directory")
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd %s && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' %s",
+		directory, recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
+}
+
+func TestProvisionerProvision_SourceDirectory(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	directory, err := ioutil.TempDir("", "source")
+	if err != nil {
+		t.Fatalf("unable to create temporary directory: %s", err)
+	}
+
+	recipeFile, err := ioutil.TempFile(directory, "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(directory)
+
+	config["recipes"] = []string{
+		filepath.Base(recipeFile.Name()),
+	}
+
+	config["source_directory"] = directory
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	if p.config.SourceDir != directory {
+		t.Errorf("value given %v, want %v", p.config.SourceDir, directory)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' %s",
+		filepath.Base(recipeFile.Name()))
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
 func TestProvisionerProvision_LogLevel(t *testing.T) {
@@ -711,7 +1015,7 @@ func TestProvisionerProvision_ExtraArguments(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi()
+	ui := testUi(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
