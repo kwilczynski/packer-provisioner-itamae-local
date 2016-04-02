@@ -1,7 +1,5 @@
-// +build !windows
-
 /*
- * main.go
+ * version.go
  *
  * Copyright 2016 Krzysztof Wilczynski
  *
@@ -18,19 +16,8 @@
  * limitations under the License.
  */
 
-package main
+/*
+ */
+package itamae
 
-import (
-	"github.com/kwilczynski/packer-provisioner-itamae/provisioner/itamae"
-	"github.com/mitchellh/packer/packer/plugin"
-)
-
-func main() {
-	server, err := plugin.Server()
-	if err != nil {
-		panic(err)
-	}
-
-	server.RegisterProvisioner(new(itamae.Provisioner))
-	server.Serve()
-}
+const Version = "0.1.0"

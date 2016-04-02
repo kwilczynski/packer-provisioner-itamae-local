@@ -611,7 +611,7 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	buffer := new(bytes.Buffer)
+	buffer := &bytes.Buffer{}
 
 	ui := testUi(buffer)
 	comm := testCommunicator()
@@ -672,7 +672,7 @@ func TestProvisionerProvision_SkipInstall(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	buffer := new(bytes.Buffer)
+	buffer := &bytes.Buffer{}
 
 	ui := testUi(buffer)
 	comm := testCommunicator()
@@ -714,7 +714,7 @@ func TestProvisionerProvision_InstallCommand(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	buffer := new(bytes.Buffer)
+	buffer := &bytes.Buffer{}
 
 	ui := testUi(buffer)
 	comm := testCommunicator()
