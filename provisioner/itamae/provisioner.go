@@ -54,8 +54,8 @@ type Config struct {
 	SourceDir       string   `mapstructure:"source_directory"`
 	LogLevel        string   `mapstructure:"log_level"`
 	Shell           string   `mapstructure:"shell"`
-	JsonPath        string   `mapstructure:"json_path"`
-	YamlPath        string   `mapstructure:"yaml_path"`
+	NodeJson        string   `mapstructure:"node_json"`
+	NodeYaml        string   `mapstructure:"node_yaml"`
 	Recipes         []string `mapstructure:"recipes"`
 	IgnoreExitCodes bool     `mapstructure:"ignore_exit_codes"`
 
@@ -73,8 +73,8 @@ type ExecuteTemplate struct {
 	StagingDir     string
 	LogLevel       string
 	Shell          string
-	JsonPath       string
-	YamlPath       string
+	NodeJson       string
+	NodeYaml       string
 	ExtraArguments string
 	Recipes        string
 	Sudo           bool
@@ -128,8 +128,8 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 			"{{.Command}} local --color='false' " +
 			"{{if ne .LogLevel \"\"}}--log-level='{{.LogLevel}}' {{end}}" +
 			"{{if ne .Shell \"\"}}--shell='{{.Shell}}' {{end}}" +
-			"{{if ne .JsonPath \"\"}}--node-json='{{.JsonPath}}' {{end}}" +
-			"{{if ne .YamlPath \"\"}}--node-yaml='{{.YamlPath}}' {{end}}" +
+			"{{if ne .NodeJson \"\"}}--node-json='{{.NodeJson}}' {{end}}" +
+			"{{if ne .NodeYaml \"\"}}--node-yaml='{{.NodeYaml}}' {{end}}" +
 			"{{if ne .ExtraArguments \"\"}}{{.ExtraArguments}} {{end}}" +
 			"{{.Recipes}}"
 	}
@@ -158,23 +158,20 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 			fmt.Errorf("A list of recipes cannot be empty."))
 	} else {
 		for idx, path := range p.config.Recipes {
-			path = p.withDirPrefix(path, p.config.SourceDir)
 			if err := p.validateFileConfig(path, fmt.Sprintf("recipes[%d]", idx)); err != nil {
 				errs = packer.MultiErrorAppend(errs, err)
 			}
 		}
 	}
 
-	if p.config.JsonPath != "" {
-		jsonPath := p.withDirPrefix(p.config.JsonPath, p.config.SourceDir)
-		if err := p.validateFileConfig(jsonPath, "json_path"); err != nil {
+	if p.config.NodeJson != "" {
+		if err := p.validateFileConfig(p.config.NodeJson, "node_json"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
 
-	if p.config.YamlPath != "" {
-		yamlPath := p.withDirPrefix(p.config.YamlPath, p.config.SourceDir)
-		if err := p.validateFileConfig(yamlPath, "yaml_path"); err != nil {
+	if p.config.NodeYaml != "" {
+		if err := p.validateFileConfig(p.config.NodeYaml, "node_yaml"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
@@ -256,7 +253,7 @@ func (p *Provisioner) guestOStype() string {
 	return runtime.GOOS
 }
 
-func (p *Provisioner) withDirPrefix(path, prefix string) string {
+func (p *Provisioner) prefixPath(path, prefix string) string {
 	if prefix != "" {
 		path = filepath.Join(prefix, path)
 	}
@@ -267,17 +264,23 @@ func (p *Provisioner) validateDirConfig(path, config string) error {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%s: %s is invalid: %s", config, path, err)
-	} else if !fi.IsDir() {
+	}
+
+	if !fi.IsDir() {
 		return fmt.Errorf("%s: %s must point to a directory", config, path)
 	}
 	return nil
 }
 
 func (p *Provisioner) validateFileConfig(path, config string) error {
+	path = p.prefixPath(path, p.config.SourceDir)
+
 	fi, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%s: %s is invalid: %s", config, path, err)
-	} else if fi.IsDir() {
+	}
+
+	if fi.IsDir() {
 		return fmt.Errorf("%s: %s must point to a file", config, path)
 	}
 	return nil
@@ -325,8 +328,8 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 		StagingDir:     p.config.StagingDir,
 		LogLevel:       p.config.LogLevel,
 		Shell:          p.config.Shell,
-		JsonPath:       p.config.JsonPath,
-		YamlPath:       p.config.YamlPath,
+		NodeJson:       p.config.NodeJson,
+		NodeYaml:       p.config.NodeYaml,
 		ExtraArguments: strings.Join(p.config.ExtraArguments, " "),
 		Recipes:        strings.Join(p.config.Recipes, " "),
 		Sudo:           !p.config.PreventSudo,

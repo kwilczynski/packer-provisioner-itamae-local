@@ -178,15 +178,15 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 			kind, len(p.config.Shell), reflect.String)
 	}
 
-	kind = reflect.ValueOf(p.config.JsonPath).Kind()
-	if kind != reflect.String || p.config.JsonPath != "" {
-		t.Errorf("incorrect json_path, given {%v %d}, want {%v 0}",
-			kind, len(p.config.JsonPath), reflect.String)
+	kind = reflect.ValueOf(p.config.NodeJson).Kind()
+	if kind != reflect.String || p.config.NodeJson != "" {
+		t.Errorf("incorrect node_json, given {%v %d}, want {%v 0}",
+			kind, len(p.config.NodeJson), reflect.String)
 	}
 
-	kind = reflect.ValueOf(p.config.YamlPath).Kind()
-	if kind != reflect.String || p.config.YamlPath != "" {
-		t.Errorf("incorrect yaml_path, given {%v %d}, want {%v 0}",
+	kind = reflect.ValueOf(p.config.NodeYaml).Kind()
+	if kind != reflect.String || p.config.NodeYaml != "" {
+		t.Errorf("incorrect node_yaml, given {%v %d}, want {%v 0}",
 			kind, len(p.config.Shell), reflect.String)
 	}
 
@@ -507,7 +507,7 @@ func TestProvisionerPrepare_Recipes(t *testing.T) {
 	}
 }
 
-func TestProvisionerPrepare_JsonPath(t *testing.T) {
+func TestProvisionerPrepare_NodeJson(t *testing.T) {
 	var err error
 	var p Provisioner
 
@@ -518,13 +518,13 @@ func TestProvisionerPrepare_JsonPath(t *testing.T) {
 		t.Fatalf("unable to create temporary file: %s", err)
 	}
 
-	jsonFile, err := ioutil.TempFile("", "node.json")
+	nodeFile, err := ioutil.TempFile("", "node.json")
 	if err != nil {
 		t.Fatalf("unable to create temporary file: %s", err)
 	}
 
 	defer os.Remove(recipeFile.Name())
-	defer os.Remove(jsonFile.Name())
+	defer os.Remove(nodeFile.Name())
 
 	err = p.Prepare(config)
 	if err == nil {
@@ -541,23 +541,23 @@ func TestProvisionerPrepare_JsonPath(t *testing.T) {
 		recipeFile.Name(),
 	}
 
-	config["json_path"] = os.TempDir()
+	config["node_json"] = os.TempDir()
 	err = p.Prepare(config)
 	if err == nil {
-		t.Errorf("should be an error if json_path points to a directory")
+		t.Errorf("should be an error if node_json points to a directory")
 	}
 
 	p = Provisioner{}
-	delete(config, "json_path")
+	delete(config, "node_json")
 
-	config["json_path"] = jsonFile.Name()
+	config["node_json"] = nodeFile.Name()
 	err = p.Prepare(config)
 	if err != nil {
 		t.Errorf("should not error, but got: %s", err)
 	}
 }
 
-func TestProvisionerPrepare_YamlPath(t *testing.T) {
+func TestProvisionerPrepare_NodeYaml(t *testing.T) {
 	var err error
 	var p Provisioner
 
@@ -568,13 +568,13 @@ func TestProvisionerPrepare_YamlPath(t *testing.T) {
 		t.Fatalf("unable to create temporary file: %s", err)
 	}
 
-	yamlFile, err := ioutil.TempFile("", "node.yml")
+	nodeFile, err := ioutil.TempFile("", "node.yml")
 	if err != nil {
 		t.Fatalf("unable to create temporary file: %s", err)
 	}
 
 	defer os.Remove(recipeFile.Name())
-	defer os.Remove(yamlFile.Name())
+	defer os.Remove(nodeFile.Name())
 
 	err = p.Prepare(config)
 	if err == nil {
@@ -591,16 +591,16 @@ func TestProvisionerPrepare_YamlPath(t *testing.T) {
 		recipeFile.Name(),
 	}
 
-	config["yaml_path"] = os.TempDir()
+	config["node_yaml"] = os.TempDir()
 	err = p.Prepare(config)
 	if err == nil {
-		t.Errorf("should be an error if yaml_path points to a directory")
+		t.Errorf("should be an error if node_yaml points to a directory")
 	}
 
 	p = Provisioner{}
-	delete(config, "json_path")
+	delete(config, "node_yaml")
 
-	config["yaml_path"] = yamlFile.Name()
+	config["node_yaml"] = nodeFile.Name()
 	err = p.Prepare(config)
 	if err != nil {
 		t.Errorf("should not error, but got: %s", err)
@@ -1000,15 +1000,195 @@ func TestProvisionerProvision_SourceDirectory(t *testing.T) {
 }
 
 func TestProvisionerProvision_LogLevel(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["log_level"] = "debug"
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' "+
+		"--log-level='debug' %s", recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
 func TestProvisionerProvision_Shell(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["shell"] = "/bin/bash"
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' "+
+		"--shell='/bin/bash' %s", recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
-func TestProvisionerProvision_JsonPath(t *testing.T) {
+func TestProvisionerProvision_NodeJson(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	nodeFile, err := ioutil.TempFile("", "node.json")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(nodeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["node_json"] = nodeFile.Name()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' "+
+		"--node-json='%s' %s", nodeFile.Name(),
+		recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
 func TestProvisionerProvision_YamlPath(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUi(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	nodeFile, err := ioutil.TempFile("", "node.yml")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(nodeFile.Name())
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["node_yaml"] = nodeFile.Name()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p.config.PackerBuildName = "virtualbox"
+	p.config.PackerBuilderType = "iso"
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+		"PACKER_BUILD_NAME='virtualbox' "+
+		"PACKER_BUILDER_TYPE='iso' "+
+		"sudo -E itamae local --color='false' "+
+		"--node-yaml='%s' %s", nodeFile.Name(),
+		recipeFile.Name())
+
+	if comm.StartCmd.Command != expected {
+		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
+			comm.StartCmd.Command, expected)
+	}
 }
 
 func TestProvisionerProvision_ExtraArguments(t *testing.T) {
@@ -1076,9 +1256,7 @@ func TestProvisionerProvision_Recipes(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	buffer := &bytes.Buffer{}
-
-	ui := testUi(buffer)
+	ui := testUi(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1138,13 +1316,7 @@ func TestProvisionerProvision_Recipes(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := strings.Join(recipes, " ")
-	if ok := strings.Contains(buffer.String(), expected); !ok {
-		t.Errorf("incorrect recipes, given: \"%v\", want \"%v\"",
-			buffer, expected)
-	}
-
-	expected = fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --color='false' %s",
@@ -1164,9 +1336,7 @@ func TestProvisionerProvision_PreventSudo(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	buffer := &bytes.Buffer{}
-
-	ui := testUi(buffer)
+	ui := testUi(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1194,12 +1364,7 @@ func TestProvisionerProvision_PreventSudo(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := "sudo -E"
-	if ok := strings.Contains(buffer.String(), expected); ok {
-		t.Errorf("should not include 'sudo -E', but got: %s", buffer)
-	}
-
-	expected = fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"itamae local --color='false' %s",
