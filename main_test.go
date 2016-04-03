@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kwilczynski/packer-provisioner-itamae/provisioner/itamae"
+	"github.com/kwilczynski/packer-provisioner-itamae/itamae"
 )
 
 func TestMain(t *testing.T) {

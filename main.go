@@ -21,16 +21,43 @@
 package main
 
 import (
-	"github.com/kwilczynski/packer-provisioner-itamae/provisioner/itamae"
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/kwilczynski/packer-provisioner-itamae/itamae"
 	"github.com/mitchellh/packer/packer/plugin"
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-h", "-help", "--help", "help":
+			fmt.Printf(
+				"Usage: %s [--version] [--help] <COMMAND>\n\n"+
+					"Available commands are:\n"+
+					"    version    Print the version and exit.\n"+
+					"    help       Show this help screen.\n\n",
+				filepath.Base(os.Args[0]))
+		case "version":
+			version := bytes.Buffer{}
+			fmt.Fprintf(&version, "Provisioner Itamae v%s", itamae.Version)
+			if itamae.Revision != "" {
+				fmt.Fprintf(&version, " (%s)", itamae.Revision)
+			}
+			fmt.Println(version.String())
+		case "-version", "--version":
+			fmt.Printf("%s\n", itamae.Version)
+		}
+		os.Exit(0)
+	}
+
 	server, err := plugin.Server()
 	if err != nil {
 		panic(err)
 	}
 
-	server.RegisterProvisioner(new(itamae.Provisioner))
+	server.RegisterProvisioner(&itamae.Provisioner{})
 	server.Serve()
 }

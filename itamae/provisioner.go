@@ -19,7 +19,9 @@
 package itamae
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -86,6 +88,14 @@ type InstallTemplate struct {
 }
 
 func (p *Provisioner) Prepare(raws ...interface{}) error {
+	version := bytes.Buffer{}
+	fmt.Fprintf(&version, "[INFO] Provisioner Itamae v%s", Version)
+
+	if Revision != "" {
+		fmt.Fprintf(&version, " (%s)", Revision)
+	}
+	log.Printf(version.String())
+
 	err := config.Decode(&p.config, &config.DecodeOpts{
 		Interpolate:        true,
 		InterpolateContext: &p.config.ctx,

@@ -18,4 +18,4 @@
 
 /*
  */
-package itamae
+package main

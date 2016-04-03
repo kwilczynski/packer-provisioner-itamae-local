@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,10 @@ import (
 	"github.com/mitchellh/packer/packer"
 	"github.com/mitchellh/packer/template/interpolate"
 )
+
+func init() {
+	log.SetOutput(ioutil.Discard)
+}
 
 func TestProvisioner(t *testing.T) {
 	p := &Provisioner{}
