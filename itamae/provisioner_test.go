@@ -1381,7 +1381,7 @@ func TestProvisionerProvision_PreventSudo(t *testing.T) {
 	}
 }
 
-func TestCancel(t *testing.T) {
+func TestProvisioner_Cancel(t *testing.T) {
 	var p Provisioner
 
 	if os.Getenv("TEST_CANCEL") == "1" {
@@ -1389,7 +1389,7 @@ func TestCancel(t *testing.T) {
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestCancel")
+	cmd := exec.Command(os.Args[0], "-test.run=TestProvisioner_Cancel")
 	cmd.Env = append(os.Environ(), "TEST_CANCEL=1")
 
 	err := cmd.Run()
