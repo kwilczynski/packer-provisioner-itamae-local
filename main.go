@@ -21,7 +21,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,12 +40,11 @@ func main() {
 					"    help       Show this help screen.\n\n",
 				filepath.Base(os.Args[0]))
 		case "version":
-			version := bytes.Buffer{}
-			fmt.Fprintf(&version, "Provisioner Itamae v%s", itamae.Version)
+			version := fmt.Sprintf("[INFO] Provisioner Itamae v%s", itamae.Version)
 			if itamae.Revision != "" {
-				fmt.Fprintf(&version, " (%s)", itamae.Revision)
+				version += fmt.Sprintf(" (%s)", itamae.Revision)
 			}
-			fmt.Println(version.String())
+			fmt.Println(version)
 		case "-version", "--version":
 			fmt.Printf("%s\n", itamae.Version)
 		}
