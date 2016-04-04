@@ -40,7 +40,7 @@ func main() {
 					"    help       Show this help screen.\n\n",
 				filepath.Base(os.Args[0]))
 		case "version":
-			version := fmt.Sprintf("[INFO] Provisioner Itamae v%s", itamae.Version)
+			version := fmt.Sprintf("Provisioner Itamae v%s", itamae.Version)
 			if itamae.Revision != "" {
 				version += fmt.Sprintf(" (%s)", itamae.Revision)
 			}
