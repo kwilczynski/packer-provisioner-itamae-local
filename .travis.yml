@@ -15,6 +15,7 @@ matrix:
 branches:
   only:
     - master
+    - develop
 env:
   - PATH=${PATH}:${HOME}/gopath/bin:${GOPATH}
 before_install:
