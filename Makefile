@@ -17,10 +17,10 @@
 
 SHELL := /bin/bash
 
-GOPATH := $(CURDIR)/vendor:${GOPATH}
+#GOPATH := $(CURDIR)/vendor:${GOPATH}
 
-export GOPATH
-export GO15VENDOREXPERIMENT=1
+#export GOPATH
+#export GO15VENDOREXPERIMENT=1
 
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || true)
@@ -60,14 +60,14 @@ tools:
 	go get github.com/mitchellh/gox
 
 test: deps
-	go test -v ./... 
+	go test -v ./...
 
 vet:
 	go vet -v ./...
 
 lint:
 	golint ./...
-	
+
 fmt:
 	go fmt ./...
 
