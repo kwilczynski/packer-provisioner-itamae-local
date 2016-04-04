@@ -17,11 +17,6 @@
 
 SHELL := /bin/bash
 
-#GOPATH := $(CURDIR)/vendor:${GOPATH}
-
-#export GOPATH
-#export GO15VENDOREXPERIMENT=1
-
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || true)
 
