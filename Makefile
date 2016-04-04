@@ -43,10 +43,10 @@ clean: clean-packages
 	rm -vf packer-provisioner-itamae_*
 
 clean-packages:
-	rm -vdRf packages/*
+	rm -vRf packages/*
 
 clean-vendor:
-	find $(CURDIR)/vendor -type d -print0 | xargs -0 rm -vdRf || true
+	find $(CURDIR)/vendor -type d -print0 | xargs -0 rm -vRf || true
 
 clean-all: clean clean-packages clean-vendor
 
