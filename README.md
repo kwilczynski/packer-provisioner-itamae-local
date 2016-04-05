@@ -11,6 +11,7 @@
 5. [Examples](#examples)
 6. [Building](#building)
 7. [Contributing](#contributing)
+8. [Author](#author)
 8. [Copyright](#copyright)
 9. [License](#license)
 
@@ -27,5 +28,9 @@
 ## Building
 
 ## Contributing
+
+## Author
+
+## Copyright
 
 ## License
