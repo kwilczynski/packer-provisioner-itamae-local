@@ -23,15 +23,15 @@ CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || tr
 PKG := packer-provisioner-itamae
 VERSION := $(shell cat VERSION)
 
-OS := linux darwin
+OS := darwin freebsd linux openbsd
 ARCH := 386 amd64
 LDFLAGS := -X github.com/kwilczynski/$(PKG)/itamae.Revision=$(REV)$(CHANGES)
 
-.PHONY: default clean clean-vendor deps tools vet test lint fmt release vendor
+.PHONY: default clean clean-vendor deps tools vet test lint imports fmt release vendor
 
 default: all
 
-all: fmt lint vet build
+all: imports fmt lint vet build
 
 clean: clean-packages
 	go clean -x -i ./...
@@ -45,14 +45,15 @@ clean-vendor:
 
 clean-all: clean clean-packages clean-vendor
 
-deps: tools
-	godep restore
-
 tools:
 	go get golang.org/x/tools/cmd/vet
+	go get golang.org/x/tools/cmd/goimports
 	go get github.com/golang/lint/golint
 	go get github.com/tools/godep
 	go get github.com/mitchellh/gox
+
+deps:
+	godep restore
 
 test: deps
 	go test -v ./...
@@ -62,6 +63,9 @@ vet:
 
 lint:
 	golint ./...
+
+imports:
+	goimports -l -w .
 
 fmt:
 	go fmt ./...
@@ -97,8 +101,7 @@ release:
 sign-release:
 	shasum -a 256 -b $(PKG)_$(VERSION)_* > ./$(PKG)_${VERSION}_SHA256SUMS
 
-vendor:
-	godep restore
+vendor: deps
 	godep save
 
 version: env
