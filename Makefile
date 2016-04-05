@@ -23,14 +23,15 @@ CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || tr
 TARGET := packer-provisioner-itamae
 VERSION := $(shell cat VERSION)
 
-OS := darwin freebsd linux openbsd
-ARCH := 386 amd64
+OS := $(OS:darwin freebsd linux openbsd)
+ARCH := $(ARCH: 386 amd64)
 LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 
 .PHONY: \
 	default \
 	clean \
-	clean-packages \
+	clean-artifacts \
+	clean-releases \
 	clean-vendor \
 	tools \
 	deps \
@@ -53,12 +54,15 @@ default: all
 
 all: imports fmt lint vet build
 
-clean: clean-packages
+clean: clean-artifacts clean-releases
 	go clean -x -i ./...
 	rm -vf packer-provisioner-itamae_*
 
-clean-packages:
-	rm -vRf packages/*
+clean-artifacts:
+	rm -vRf artifacts/*
+
+clean-releases:
+	rm -vRf releases/*
 
 clean-vendor:
 	find $(CURDIR)/vendor -type d -print0 | xargs -0 rm -vRf || true
@@ -101,27 +105,30 @@ compile-binary: env deps
 	   -o "$(TARGET)" .
 
 build: env test
-	test -x $(CURDIR)/packages || mkdir -v $(CURDIR)/packages
+	test -x $(CURDIR)/artifacts || mkdir -v -p $(CURDIR)/artifacts/$(VERSION)
 	gox -verbose \
 	    -os "$(OS)" -arch "$(ARCH)" \
 	    -ldflags "$(LDFLAGS)" \
-	    -output "$(CURDIR)/packages/{{.OS}}_{{.Arch}}/$(TARGET)" .
+	    -output "$(CURDIR)/artifacts/$(VERSION)/{{.OS}}_{{.Arch}}/$(TARGET)" .
 	cp -v -f \
-	   $(CURDIR)/packages/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET) .
+	   "$(CURDIR)/artifacts/$(VERSION)/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET)" .
 
 doc:
 	godoc -http=:8080 -index
 
 release:
-	for release in $$(find $(CURDIR)/packages -mindepth 1 -maxdepth 1 -type d); do \
+	test -x $(CURDIR)/releases || mkdir -v -p $(CURDIR)/releases/$(VERSION)
+	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d); do \
 	  platform=$$(basename $$release); \
 	  pushd $$release >/dev/null 2>&1; \
-	  zip -v $(CURDIR)/$(TARGET)_$(VERSION)_$${platform}.zip $(TARGET); \
+	  zip -v $(CURDIR)/releases/$(VERSION)/$(TARGET)_$(VERSION)_$${platform}.zip $(TARGET); \
 	  popd >/dev/null 2>&1; \
 	done
 
 sign-release:
-	shasum -a 256 -b $(TARGET)_$(VERSION)_* > ./$(TARGET)_${VERSION}_SHA256SUMS
+	pushd $(CURDIR)/releases/$(VERSION) >/dev/null 2>&1; \
+	shasum -a 256 -b $(TARGET)_$(VERSION)_* > $(TARGET)_$(VERSION)_SHA256SUMS; \
+	popd >/dev/null 2>&1
 
 check:
 	test -x $(CURDIR)/$(TARGET) || exit 1
