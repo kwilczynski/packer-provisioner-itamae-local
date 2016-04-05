@@ -20,14 +20,34 @@ SHELL := /bin/bash
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || true)
 
-PKG := packer-provisioner-itamae
+TARGET := packer-provisioner-itamae
 VERSION := $(shell cat VERSION)
 
 OS := darwin freebsd linux openbsd
 ARCH := 386 amd64
-LDFLAGS := -X github.com/kwilczynski/$(PKG)/itamae.Revision=$(REV)$(CHANGES)
+LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 
-.PHONY: default clean clean-vendor deps tools vet test lint imports fmt release vendor
+.PHONY: \
+	default \
+	clean \
+	clean-packages \
+	clean-vendor \
+	tools \
+	deps \
+	test \
+	vet \
+	lint \
+	imports \
+	fmt \
+	env \
+	compile \
+	build \
+	doc \
+	release \
+	sign-release \
+	check \
+	vendor \
+	version
 
 default: all
 
@@ -73,19 +93,21 @@ fmt:
 env:
 	go env
 
-compile: env deps
+compile: compile-binary check
+
+compile-binary: env deps
 	go build -v \
 	   -ldflags "$(LDFLAGS)" \
-	   -o "$(PKG)" .
+	   -o "$(TARGET)" .
 
 build: env test
-	@test -x $(CURDIR)/packages || mkdir -v $(CURDIR)/packages
+	test -x $(CURDIR)/packages || mkdir -v $(CURDIR)/packages
 	gox -verbose \
 	    -os "$(OS)" -arch "$(ARCH)" \
 	    -ldflags "$(LDFLAGS)" \
-	    -output "$(CURDIR)/packages/{{.OS}}_{{.Arch}}/$(PKG)" .
+	    -output "$(CURDIR)/packages/{{.OS}}_{{.Arch}}/$(TARGET)" .
 	cp -v -f \
-	   $(CURDIR)/packages/$$(go env GOOS)_$$(go env GOARCH)/$(PKG) .
+	   $(CURDIR)/packages/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET) .
 
 doc:
 	godoc -http=:8080 -index
@@ -94,12 +116,20 @@ release:
 	for release in $$(find $(CURDIR)/packages -mindepth 1 -maxdepth 1 -type d); do \
 	  platform=$$(basename $$release); \
 	  pushd $$release >/dev/null 2>&1; \
-	  zip -v $(CURDIR)/$(PKG)_$(VERSION)_$${platform}.zip $(PKG); \
+	  zip -v $(CURDIR)/$(TARGET)_$(VERSION)_$${platform}.zip $(TARGET); \
 	  popd >/dev/null 2>&1; \
 	done
 
 sign-release:
-	shasum -a 256 -b $(PKG)_$(VERSION)_* > ./$(PKG)_${VERSION}_SHA256SUMS
+	shasum -a 256 -b $(TARGET)_$(VERSION)_* > ./$(TARGET)_${VERSION}_SHA256SUMS
+
+check:
+	test -x $(CURDIR)/$(TARGET) || exit 1
+	if $(CURDIR)/$(TARGET) --version | grep -qF '$(VERSION)'; then \
+	  echo "$(CURDIR)/$(TARGET): OK"; \
+	else \
+	  exit 1; \
+	fi
 
 vendor: deps
 	godep save
