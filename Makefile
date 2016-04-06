@@ -23,11 +23,12 @@ CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || tr
 TARGET := packer-provisioner-itamae
 VERSION := $(shell cat VERSION)
 
-OS := $(OS:darwin freebsd linux openbsd)
-ARCH := $(ARCH: 386 amd64)
+OS := darwin freebsd linux openbsd
+ARCH := 386 amd64
 LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 
 .PHONY: \
+	help \
 	default \
 	clean \
 	clean-artifacts \
@@ -50,9 +51,40 @@ LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 	vendor \
 	version
 
-default: all
-
 all: imports fmt lint vet build
+
+help:
+	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
+	@echo ''
+	@echo 'Available targets are:'
+	@echo ''
+	@echo '    help               Show this help screen.'
+	@echo '    clean              Remove binaries, artifacts and releases.'
+	@echo '    clean-artifacts    Remove build artifacts only.'
+	@echo '    clean-releases     Remove releases only.'
+	@echo '    clean-vendor       Remove content of the vendor directory.'
+	@echo '    tools              Install tools needed by the project.'
+	@echo '    deps               Download and install build time dependencies.'
+	@echo '    test               Run unit tests.'
+	@echo '    vet                Run go vet.'
+	@echo '    lint               Run golint.'
+	@echo '    imports            Run goimports.'
+	@echo '    fmt                Run go fmt.'
+	@echo '    env                Display Go environment.'
+	@echo '    compile            Compile binary for current system and architecture.'
+	@echo '    build              Test and compile project for supported platforms.'
+	@echo '    doc                Start Go documentation server on port 8080.'
+	@echo '    release            Prepare project for release.'
+	@echo '    sign-release       Sign release and generate checksums.'
+	@echo '    check              Verify compiled binary.'
+	@echo '    vendor             Update and save project build time dependencies.'
+	@echo '    version            Display Go version.'
+	@echo ''
+	@echo 'Targets run by default are: imports, fmt, lint, vet and build.'
+	@echo ''
+
+print-%:
+	@echo $* = $($*)
 
 clean: clean-artifacts clean-releases
 	go clean -x -i ./...
@@ -65,9 +97,9 @@ clean-releases:
 	rm -vRf releases/*
 
 clean-vendor:
-	find $(CURDIR)/vendor -type d -print0 | xargs -0 rm -vRf || true
+	find $(CURDIR)/vendor -type d -print0 2>/dev/null | xargs -0 rm -vRf
 
-clean-all: clean clean-packages clean-vendor
+clean-all: clean clean-artifacts clean-vendor
 
 tools:
 	go get golang.org/x/tools/cmd/vet
@@ -95,7 +127,7 @@ fmt:
 	go fmt ./...
 
 env:
-	go env
+	@go env
 
 compile: compile-binary check
 
@@ -105,7 +137,7 @@ compile-binary: env deps
 	   -o "$(TARGET)" .
 
 build: env test
-	test -x $(CURDIR)/artifacts || mkdir -v -p $(CURDIR)/artifacts/$(VERSION)
+	mkdir -v -p $(CURDIR)/artifacts/$(VERSION)
 	gox -verbose \
 	    -os "$(OS)" -arch "$(ARCH)" \
 	    -ldflags "$(LDFLAGS)" \
@@ -117,21 +149,23 @@ doc:
 	godoc -http=:8080 -index
 
 release:
-	test -x $(CURDIR)/releases || mkdir -v -p $(CURDIR)/releases/$(VERSION)
+	@test -x $(CURDIR)/artifacts/$(VERSION) || exit 1
+	mkdir -v -p $(CURDIR)/releases/$(VERSION)
 	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d); do \
 	  platform=$$(basename $$release); \
-	  pushd $$release >/dev/null 2>&1; \
-	  zip -v $(CURDIR)/releases/$(VERSION)/$(TARGET)_$(VERSION)_$${platform}.zip $(TARGET); \
-	  popd >/dev/null 2>&1; \
+	  pushd $$release &>/dev/null; \
+	  zip -v $(CURDIR)/releases/$(VERSION)/$(TARGET)_$${platform}.zip $(TARGET); \
+	  popd &>/dev/null; \
 	done
 
 sign-release:
-	pushd $(CURDIR)/releases/$(VERSION) >/dev/null 2>&1; \
-	shasum -a 256 -b $(TARGET)_$(VERSION)_* > $(TARGET)_$(VERSION)_SHA256SUMS; \
-	popd >/dev/null 2>&1
+	@test -x $(CURDIR)/releases/$(VERSION) || exit 1
+	pushd $(CURDIR)/releases/$(VERSION) &>/dev/null; \
+	shasum -a 256 -b $(TARGET)_* | tee SHA256SUMS; \
+	popd &>/dev/null
 
 check:
-	test -x $(CURDIR)/$(TARGET) || exit 1
+	@test -x $(CURDIR)/$(TARGET) || exit 1
 	if $(CURDIR)/$(TARGET) --version | grep -qF '$(VERSION)'; then \
 	  echo "$(CURDIR)/$(TARGET): OK"; \
 	else \
@@ -141,5 +175,5 @@ check:
 vendor: deps
 	godep save
 
-version: env
-	go version
+version:
+	@go version
