@@ -37,6 +37,7 @@ LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 	tools \
 	deps \
 	test \
+	coverage \
 	vet \
 	lint \
 	imports \
@@ -66,6 +67,7 @@ help:
 	@echo '    tools              Install tools needed by the project.'
 	@echo '    deps               Download and install build time dependencies.'
 	@echo '    test               Run unit tests.'
+	@echo '    coverage           Report code tests coverage.'
 	@echo '    vet                Run go vet.'
 	@echo '    lint               Run golint.'
 	@echo '    imports            Run goimports.'
@@ -88,7 +90,9 @@ print-%:
 
 clean: clean-artifacts clean-releases
 	go clean -i ./...
-	rm -vf packer-provisioner-itamae_*
+	rm -vf \
+	  $(CURDIR)/coverage.* \
+	  $(CURDIR)/packer-provisioner-itamae_*
 
 clean-artifacts:
 	rm -Rf artifacts/*
@@ -105,6 +109,8 @@ tools:
 	go get golang.org/x/tools/cmd/vet
 	go get golang.org/x/tools/cmd/goimports
 	go get github.com/golang/lint/golint
+	go get github.com/axw/gocov/gocov
+	go get github.com/matm/gocov-html
 	go get github.com/tools/godep
 	go get github.com/mitchellh/gox
 
@@ -113,6 +119,16 @@ deps:
 
 test: deps
 	go test -v ./...
+
+coverage: deps
+	gocov test ./... > $(CURDIR)/coverage.out 2>/dev/null
+	gocov report $(CURDIR)/coverage.out
+	if test -z "$$CI"; then \
+	  gocov-html $(CURDIR)/coverage.out > $(CURDIR)/coverage.html; \
+	  if which open &>/dev/null; then \
+	    open $(CURDIR)/coverage.html; \
+	  fi; \
+	fi
 
 vet:
 	go vet -v ./...
@@ -141,7 +157,7 @@ build-all: deps
 	    -ldflags "$(LDFLAGS)" \
 	    -output "$(CURDIR)/artifacts/$(VERSION)/{{.OS}}_{{.Arch}}/$(TARGET)" .
 	cp -v -f \
-	   "$(CURDIR)/artifacts/$(VERSION)/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET)" .
+	   $(CURDIR)/artifacts/$(VERSION)/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET) .
 
 doc:
 	godoc -http=:8080 -index
