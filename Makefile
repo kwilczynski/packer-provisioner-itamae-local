@@ -27,6 +27,8 @@ OS := darwin freebsd linux openbsd
 ARCH := 386 amd64
 LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 
+GPG_SIGNING_KEY :=
+
 .PHONY: \
 	help \
 	default \
@@ -176,6 +178,10 @@ sign-release:
 	@test -x $(CURDIR)/releases/$(VERSION) || exit 1
 	pushd $(CURDIR)/releases/$(VERSION) &>/dev/null; \
 	shasum -a 256 -b $(TARGET)_* > SHA256SUMS; \
+	if test -n "$(GPG_SIGNING_KEY)"; then \
+	  gpg --default-key $(GPG_SIGNING_KEY) -a \
+	      -o SHA256SUMS.sign -b SHA256SUMS; \
+	fi; \
 	popd &>/dev/null
 
 check:
