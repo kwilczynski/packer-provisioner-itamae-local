@@ -42,8 +42,8 @@ LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
 	imports \
 	fmt \
 	env \
-	compile \
 	build \
+	build-all \
 	doc \
 	release \
 	sign-release \
@@ -71,8 +71,8 @@ help:
 	@echo '    imports            Run goimports.'
 	@echo '    fmt                Run go fmt.'
 	@echo '    env                Display Go environment.'
-	@echo '    compile            Compile binary for current system and architecture.'
-	@echo '    build              Test and compile project for supported platforms.'
+	@echo '    build              Build project for current platform.'
+	@echo '    build-all          Build project for all supported platforms.'
 	@echo '    doc                Start Go documentation server on port 8080.'
 	@echo '    release            Prepare project for release.'
 	@echo '    sign-release       Sign release and generate checksums.'
@@ -87,17 +87,17 @@ print-%:
 	@echo $* = $($*)
 
 clean: clean-artifacts clean-releases
-	go clean -x -i ./...
+	go clean -i ./...
 	rm -vf packer-provisioner-itamae_*
 
 clean-artifacts:
-	rm -vRf artifacts/*
+	rm -Rf artifacts/*
 
 clean-releases:
-	rm -vRf releases/*
+	rm -Rf releases/*
 
 clean-vendor:
-	find $(CURDIR)/vendor -type d -print0 2>/dev/null | xargs -0 rm -vRf
+	find $(CURDIR)/vendor -type d -print0 2>/dev/null | xargs -0 rm -Rf
 
 clean-all: clean clean-artifacts clean-vendor
 
@@ -129,14 +129,12 @@ fmt:
 env:
 	@go env
 
-compile: compile-binary check
-
-compile-binary: env deps
+build: deps
 	go build -v \
 	   -ldflags "$(LDFLAGS)" \
 	   -o "$(TARGET)" .
 
-build: env test
+build-all: deps
 	mkdir -v -p $(CURDIR)/artifacts/$(VERSION)
 	gox -verbose \
 	    -os "$(OS)" -arch "$(ARCH)" \
@@ -151,17 +149,17 @@ doc:
 release:
 	@test -x $(CURDIR)/artifacts/$(VERSION) || exit 1
 	mkdir -v -p $(CURDIR)/releases/$(VERSION)
-	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d); do \
+	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d 2>/dev/null); do \
 	  platform=$$(basename $$release); \
 	  pushd $$release &>/dev/null; \
-	  zip -v $(CURDIR)/releases/$(VERSION)/$(TARGET)_$${platform}.zip $(TARGET); \
+	  zip $(CURDIR)/releases/$(VERSION)/$(TARGET)_$${platform}.zip $(TARGET); \
 	  popd &>/dev/null; \
 	done
 
 sign-release:
 	@test -x $(CURDIR)/releases/$(VERSION) || exit 1
 	pushd $(CURDIR)/releases/$(VERSION) &>/dev/null; \
-	shasum -a 256 -b $(TARGET)_* | tee SHA256SUMS; \
+	shasum -a 256 -b $(TARGET)_* > SHA256SUMS; \
 	popd &>/dev/null
 
 check:
