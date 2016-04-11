@@ -42,8 +42,9 @@ const (
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
-	Gem             string
-	Command         string
+	Gem     string
+	Command string
+
 	Vars            []string `mapstructure:"environment_vars"`
 	InstallCommand  string   `mapstructure:"install_command"`
 	SkipInstall     bool     `mapstructure:"skip_install"`
@@ -132,7 +133,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	if p.config.ExecuteCommand == "" {
 		p.config.ExecuteCommand = "cd {{.StagingDir}} && " +
 			"{{.Vars}} {{if .Sudo}}sudo -E {{end}}" +
-			"{{.Command}} local --color='false' " +
+			"{{.Command}} local --detailed-exitcode --color='false' " +
 			"{{if ne .LogLevel \"\"}}--log-level='{{.LogLevel}}' {{end}}" +
 			"{{if ne .Shell \"\"}}--shell='{{.Shell}}' {{end}}" +
 			"{{if ne .NodeJson \"\"}}--node-json='{{.NodeJson}}' {{end}}" +
@@ -356,8 +357,10 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 		return err
 	}
 
-	if cmd.ExitStatus != 0 && !p.config.IgnoreExitCodes {
-		return fmt.Errorf("Non-zero exit status. See output above for more information.")
+	if !p.config.IgnoreExitCodes {
+		if cmd.ExitStatus != 0 && cmd.ExitStatus != 2 {
+			return fmt.Errorf("Non-zero exit status. See output above for more information.")
+		}
 	}
 	return nil
 }
