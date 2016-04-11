@@ -18,7 +18,7 @@
 
 /*
  */
-package itamae
+package itamaelocal
 
 var Revision string
 

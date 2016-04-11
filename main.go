@@ -25,7 +25,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kwilczynski/packer-provisioner-itamae/itamae"
+	"github.com/kwilczynski/packer-provisioner-itamae-local/itamae"
 	"github.com/mitchellh/packer/packer/plugin"
 )
 
@@ -40,13 +40,13 @@ func main() {
 					"    help       Show this help screen.\n\n",
 				filepath.Base(os.Args[0]))
 		case "version":
-			version := fmt.Sprintf("Provisioner Itamae v%s", itamae.Version)
-			if itamae.Revision != "" {
-				version += fmt.Sprintf(" (%s)", itamae.Revision)
+			version := fmt.Sprintf("Provisioner Itamae v%s", itamaelocal.Version)
+			if itamaelocal.Revision != "" {
+				version += fmt.Sprintf(" (%s)", itamaelocal.Revision)
 			}
 			fmt.Println(version)
 		case "-version", "--version":
-			fmt.Printf("%s\n", itamae.Version)
+			fmt.Printf("%s\n", itamaelocal.Version)
 		}
 		os.Exit(0)
 	}
@@ -56,6 +56,6 @@ func main() {
 		panic(err)
 	}
 
-	server.RegisterProvisioner(&itamae.Provisioner{})
+	server.RegisterProvisioner(&itamaelocal.Provisioner{})
 	server.Serve()
 }

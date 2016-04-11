@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/kwilczynski/packer-provisioner-itamae",
+	"ImportPath": "github.com/kwilczynski/packer-provisioner-itamae-local",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v60",
 	"Deps": [

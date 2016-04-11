@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package itamae
+package itamaelocal
 
 import (
 	"fmt"

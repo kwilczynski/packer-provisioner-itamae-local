@@ -20,12 +20,12 @@ SHELL := /bin/bash
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || true)
 
-TARGET := packer-provisioner-itamae
+TARGET := packer-provisioner-itamae-local
 VERSION := $(shell cat VERSION)
 
 OS := darwin freebsd linux openbsd
 ARCH := 386 amd64
-LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamae.Revision=$(REV)$(CHANGES)
+LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamaelocal.Revision=$(REV)$(CHANGES)
 
 GPG_SIGNING_KEY :=
 
@@ -49,6 +49,7 @@ GPG_SIGNING_KEY :=
 	build-all \
 	doc \
 	release \
+	package-release \
 	sign-release \
 	check \
 	vendor \
@@ -78,7 +79,8 @@ help:
 	@echo '    build              Build project for current platform.'
 	@echo '    build-all          Build project for all supported platforms.'
 	@echo '    doc                Start Go documentation server on port 8080.'
-	@echo '    release            Prepare project for release.'
+	@echo '    release            Package and sing project for release.'
+	@echo '    package-release    Package release and compress artifacts.'
 	@echo '    sign-release       Sign release and generate checksums.'
 	@echo '    check              Verify compiled binary.'
 	@echo '    vendor             Update and save project build time dependencies.'
@@ -94,7 +96,7 @@ clean: clean-artifacts clean-releases
 	go clean -i ./...
 	rm -vf \
 	  $(CURDIR)/coverage.* \
-	  $(CURDIR)/packer-provisioner-itamae_*
+	  $(CURDIR)/packer-provisioner-itamae-local_*
 
 clean-artifacts:
 	rm -Rf artifacts/*
@@ -108,7 +110,6 @@ clean-vendor:
 clean-all: clean clean-artifacts clean-vendor
 
 tools:
-	go get golang.org/x/tools/cmd/vet
 	go get golang.org/x/tools/cmd/goimports
 	go get github.com/golang/lint/golint
 	go get github.com/axw/gocov/gocov
@@ -164,7 +165,9 @@ build-all: deps
 doc:
 	godoc -http=:8080 -index
 
-release:
+release: package-release sign-release
+
+package-release:
 	@test -x $(CURDIR)/artifacts/$(VERSION) || exit 1
 	mkdir -v -p $(CURDIR)/releases/$(VERSION)
 	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d 2>/dev/null); do \

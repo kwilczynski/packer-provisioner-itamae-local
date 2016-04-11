@@ -22,14 +22,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kwilczynski/packer-provisioner-itamae/itamae"
+	"github.com/kwilczynski/packer-provisioner-itamae-local/itamae"
 )
 
 func TestMain(t *testing.T) {
-	p := itamae.Provisioner{}
+	p := itamaelocal.Provisioner{}
 
 	func(v interface{}) {
-		if _, ok := v.(itamae.Provisioner); !ok {
+		if _, ok := v.(itamaelocal.Provisioner); !ok {
 			t.Fatalf("not a itamae.Provisioner type: %s", reflect.TypeOf(v).String())
 		}
 	}(p)
