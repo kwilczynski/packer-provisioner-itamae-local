@@ -184,14 +184,14 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 			kind, len(p.config.Shell), reflect.String)
 	}
 
-	kind = reflect.ValueOf(p.config.NodeJson).Kind()
-	if kind != reflect.String || p.config.NodeJson != "" {
+	kind = reflect.ValueOf(p.config.NodeJSON).Kind()
+	if kind != reflect.String || p.config.NodeJSON != "" {
 		t.Errorf("incorrect node_json, given {%v %d}, want {%v 0}",
-			kind, len(p.config.NodeJson), reflect.String)
+			kind, len(p.config.NodeJSON), reflect.String)
 	}
 
-	kind = reflect.ValueOf(p.config.NodeYaml).Kind()
-	if kind != reflect.String || p.config.NodeYaml != "" {
+	kind = reflect.ValueOf(p.config.NodeYAML).Kind()
+	if kind != reflect.String || p.config.NodeYAML != "" {
 		t.Errorf("incorrect node_yaml, given {%v %d}, want {%v 0}",
 			kind, len(p.config.Shell), reflect.String)
 	}
@@ -513,7 +513,7 @@ func TestProvisionerPrepare_Recipes(t *testing.T) {
 	}
 }
 
-func TestProvisionerPrepare_NodeJson(t *testing.T) {
+func TestProvisionerPrepare_NodeJSON(t *testing.T) {
 	var err error
 	var p Provisioner
 
@@ -563,7 +563,7 @@ func TestProvisionerPrepare_NodeJson(t *testing.T) {
 	}
 }
 
-func TestProvisionerPrepare_NodeYaml(t *testing.T) {
+func TestProvisionerPrepare_NodeYAML(t *testing.T) {
 	var err error
 	var p Provisioner
 
@@ -619,7 +619,7 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 
 	buffer := &bytes.Buffer{}
 
-	ui := testUi(buffer)
+	ui := testUI(buffer)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -680,7 +680,7 @@ func TestProvisionerProvision_SkipInstall(t *testing.T) {
 
 	buffer := &bytes.Buffer{}
 
-	ui := testUi(buffer)
+	ui := testUI(buffer)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -722,7 +722,7 @@ func TestProvisionerProvision_InstallCommand(t *testing.T) {
 
 	buffer := &bytes.Buffer{}
 
-	ui := testUi(buffer)
+	ui := testUI(buffer)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -770,7 +770,7 @@ func TestProvisionerProvision_ExecuteCommand(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -820,7 +820,7 @@ func TestProvisionerProvision_EnvironmentVars(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -881,7 +881,7 @@ func TestProvisionerProvision_StagingDirectory(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -955,7 +955,7 @@ func TestProvisionerProvision_SourceDirectory(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1010,7 +1010,7 @@ func TestProvisionerProvision_LogLevel(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1055,7 +1055,7 @@ func TestProvisionerProvision_Shell(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1096,11 +1096,11 @@ func TestProvisionerProvision_Shell(t *testing.T) {
 	}
 }
 
-func TestProvisionerProvision_NodeJson(t *testing.T) {
+func TestProvisionerProvision_NodeJSON(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1152,7 +1152,7 @@ func TestProvisionerProvision_YamlPath(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1204,7 +1204,7 @@ func TestProvisionerProvision_ExtraArguments(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1266,7 +1266,7 @@ func TestProvisionerProvision_Recipes(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 
@@ -1346,7 +1346,7 @@ func TestProvisionerProvision_PreventSudo(t *testing.T) {
 	var err error
 	var p Provisioner
 
-	ui := testUi(nil)
+	ui := testUI(nil)
 	comm := testCommunicator()
 	config := testConfig()
 

@@ -29,7 +29,7 @@ func testConfig() map[string]interface{} {
 	return make(map[string]interface{})
 }
 
-func testUi(writer io.Writer) *packer.MachineReadableUi {
+func testUI(writer io.Writer) *packer.MachineReadableUi {
 	if writer == nil {
 		writer = ioutil.Discard
 	}

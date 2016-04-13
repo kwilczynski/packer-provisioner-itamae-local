@@ -34,63 +34,104 @@ import (
 )
 
 const (
-	DefaultCommand    = "itamae"
+	//
+	DefaultCommand = "itamae"
+
+	//
 	DefaultStagingDir = "/tmp/packer-itamae"
 )
 
+//
 var DefaultGems = []string{
 	"itamae",
 	"specinfra-ec2_metadata-tags",
 }
 
+//
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
+	//
 	Command string
-	Gems    []string
 
-	Vars            []string `mapstructure:"environment_vars"`
-	InstallCommand  string   `mapstructure:"install_command"`
-	SkipInstall     bool     `mapstructure:"skip_install"`
-	ExecuteCommand  string   `mapstructure:"execute_command"`
-	ExtraArguments  []string `mapstructure:"extra_arguments"`
-	PreventSudo     bool     `mapstructure:"prevent_sudo"`
-	StagingDir      string   `mapstructure:"staging_directory"`
-	CleanStagingDir bool     `mapstructure:"clean_staging_directory"`
-	SourceDir       string   `mapstructure:"source_directory"`
-	LogLevel        string   `mapstructure:"log_level"`
-	Shell           string   `mapstructure:"shell"`
-	NodeJson        string   `mapstructure:"node_json"`
-	NodeYaml        string   `mapstructure:"node_yaml"`
-	Recipes         []string `mapstructure:"recipes"`
-	IgnoreExitCodes bool     `mapstructure:"ignore_exit_codes"`
+	//
+	Gems []string
+
+	//
+	Vars []string `mapstructure:"environment_vars"`
+
+	//
+	InstallCommand string `mapstructure:"install_command"`
+
+	//
+	SkipInstall bool `mapstructure:"skip_install"`
+
+	//
+	ExecuteCommand string `mapstructure:"execute_command"`
+
+	//
+	ExtraArguments []string `mapstructure:"extra_arguments"`
+
+	//
+	PreventSudo bool `mapstructure:"prevent_sudo"`
+
+	//
+	StagingDir string `mapstructure:"staging_directory"`
+
+	//
+	CleanStagingDir bool `mapstructure:"clean_staging_directory"`
+
+	//
+	SourceDir string `mapstructure:"source_directory"`
+
+	//
+	LogLevel string `mapstructure:"log_level"`
+
+	//
+	Shell string `mapstructure:"shell"`
+
+	//
+	NodeJSON string `mapstructure:"node_json"`
+
+	//
+	NodeYAML string `mapstructure:"node_yaml"`
+
+	//
+	Recipes []string `mapstructure:"recipes"`
+
+	//
+	IgnoreExitCodes bool `mapstructure:"ignore_exit_codes"`
 
 	ctx interpolate.Context
 }
 
+//
 type Provisioner struct {
 	config        Config
 	guestCommands *provisioner.GuestCommands
 }
 
+//
 type ExecuteTemplate struct {
 	Command        string
 	Vars           string
 	StagingDir     string
 	LogLevel       string
 	Shell          string
-	NodeJson       string
-	NodeYaml       string
+	NodeJSON       string
+	NodeYAML       string
 	ExtraArguments string
 	Recipes        string
 	Sudo           bool
 }
 
+//
 type InstallTemplate struct {
 	Gems string
 	Sudo bool
 }
 
+//
 func (p *Provisioner) Prepare(raws ...interface{}) error {
 	version := fmt.Sprintf("[INFO] Provisioner Itamae v%s", Version)
 	if Revision != "" {
@@ -112,6 +153,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		return err
 	}
 
+	//
 	p.guestCommands, err = provisioner.NewGuestCommands(p.guestOStype(), !p.config.PreventSudo)
 	if err != nil {
 		return err
@@ -129,19 +171,21 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		p.config.Vars = make([]string, 0)
 	}
 
+	//
 	if p.config.InstallCommand == "" {
 		p.config.InstallCommand = "{{ if .Sudo}}sudo -E {{end}}" +
 			"gem install --quiet --no-document --no-suggestions {{ .Gems }}"
 	}
 
+	//
 	if p.config.ExecuteCommand == "" {
 		p.config.ExecuteCommand = "cd {{.StagingDir}} && " +
 			"{{.Vars}} {{if .Sudo}}sudo -E {{end}}" +
 			"{{.Command}} local --detailed-exitcode --color='false' " +
 			"{{if ne .LogLevel \"\"}}--log-level='{{.LogLevel}}' {{end}}" +
 			"{{if ne .Shell \"\"}}--shell='{{.Shell}}' {{end}}" +
-			"{{if ne .NodeJson \"\"}}--node-json='{{.NodeJson}}' {{end}}" +
-			"{{if ne .NodeYaml \"\"}}--node-yaml='{{.NodeYaml}}' {{end}}" +
+			"{{if ne .NodeJSON \"\"}}--node-json='{{.NodeJSON}}' {{end}}" +
+			"{{if ne .NodeYAML \"\"}}--node-yaml='{{.NodeYAML}}' {{end}}" +
 			"{{if ne .ExtraArguments \"\"}}{{.ExtraArguments}} {{end}}" +
 			"{{.Recipes}}"
 	}
@@ -176,14 +220,14 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		}
 	}
 
-	if p.config.NodeJson != "" {
-		if err := p.validateFileConfig(p.config.NodeJson, "node_json"); err != nil {
+	if p.config.NodeJSON != "" {
+		if err := p.validateFileConfig(p.config.NodeJSON, "node_json"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
 
-	if p.config.NodeYaml != "" {
-		if err := p.validateFileConfig(p.config.NodeYaml, "node_yaml"); err != nil {
+	if p.config.NodeYAML != "" {
+		if err := p.validateFileConfig(p.config.NodeYAML, "node_yaml"); err != nil {
 			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
@@ -205,6 +249,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	return nil
 }
 
+//
 func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	ui.Say("Provisioning with Itamae...")
 
@@ -247,10 +292,12 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	return nil
 }
 
+//
 func (p *Provisioner) Cancel() {
 	os.Exit(0)
 }
 
+//
 func (p *Provisioner) guestOStype() string {
 	unixes := map[string]bool{
 		"darwin":  true,
@@ -265,6 +312,7 @@ func (p *Provisioner) guestOStype() string {
 	return runtime.GOOS
 }
 
+//
 func (p *Provisioner) prefixPath(path, prefix string) string {
 	if prefix != "" {
 		path = filepath.Join(prefix, path)
@@ -272,6 +320,7 @@ func (p *Provisioner) prefixPath(path, prefix string) string {
 	return filepath.ToSlash(path)
 }
 
+//
 func (p *Provisioner) validateDirConfig(path, config string) error {
 	fi, err := os.Stat(path)
 	if err != nil {
@@ -284,6 +333,7 @@ func (p *Provisioner) validateDirConfig(path, config string) error {
 	return nil
 }
 
+//
 func (p *Provisioner) validateFileConfig(path, config string) error {
 	path = p.prefixPath(path, p.config.SourceDir)
 
@@ -298,6 +348,7 @@ func (p *Provisioner) validateFileConfig(path, config string) error {
 	return nil
 }
 
+//
 func (p *Provisioner) installItamae(ui packer.Ui, comm packer.Communicator) error {
 	ui.Message("Installing Itamae...")
 
@@ -326,9 +377,11 @@ func (p *Provisioner) installItamae(ui packer.Ui, comm packer.Communicator) erro
 	return nil
 }
 
+//
 func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) error {
 	ui.Message("Executing Itamae...")
 
+	//
 	envVars := make([]string, len(p.config.Vars)+2)
 	envVars[0] = fmt.Sprintf("PACKER_BUILD_NAME='%s'", p.config.PackerBuildName)
 	envVars[1] = fmt.Sprintf("PACKER_BUILDER_TYPE='%s'", p.config.PackerBuilderType)
@@ -340,8 +393,8 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 		StagingDir:     p.config.StagingDir,
 		LogLevel:       p.config.LogLevel,
 		Shell:          p.config.Shell,
-		NodeJson:       p.config.NodeJson,
-		NodeYaml:       p.config.NodeYaml,
+		NodeJSON:       p.config.NodeJSON,
+		NodeYAML:       p.config.NodeYAML,
 		ExtraArguments: strings.Join(p.config.ExtraArguments, " "),
 		Recipes:        strings.Join(p.config.Recipes, " "),
 		Sudo:           !p.config.PreventSudo,
@@ -369,6 +422,7 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 	return nil
 }
 
+//
 func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
 		Command: p.guestCommands.CreateDir(dir),
@@ -396,6 +450,7 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 	return nil
 }
 
+//
 func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
 		Command: p.guestCommands.RemoveDir(dir),
@@ -412,6 +467,7 @@ func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir stri
 	return nil
 }
 
+//
 func (p *Provisioner) uploadFile(ui packer.Ui, comm packer.Communicator, dst, src string) error {
 	f, err := os.Open(src)
 	if err != nil {
@@ -423,8 +479,10 @@ func (p *Provisioner) uploadFile(ui packer.Ui, comm packer.Communicator, dst, sr
 	return comm.Upload(dst, f, nil)
 }
 
+//
 func (p *Provisioner) uploadDir(ui packer.Ui, comm packer.Communicator, dst, src string) error {
 	ui.Message(fmt.Sprintf("Uploading directory: %s", src))
+	//
 	if ok := strings.HasSuffix(src, "/"); !ok {
 		src += "/"
 	}
