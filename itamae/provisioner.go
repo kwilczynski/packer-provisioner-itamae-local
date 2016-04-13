@@ -34,16 +34,20 @@ import (
 )
 
 const (
-	DefaultGem        = "itamae"
 	DefaultCommand    = "itamae"
 	DefaultStagingDir = "/tmp/packer-itamae"
 )
 
+var DefaultGems = []string{
+	"itamae",
+	"specinfra-ec2_metadata-tags",
+}
+
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
-	Gem     string
 	Command string
+	Gems    []string
 
 	Vars            []string `mapstructure:"environment_vars"`
 	InstallCommand  string   `mapstructure:"install_command"`
@@ -83,7 +87,7 @@ type ExecuteTemplate struct {
 }
 
 type InstallTemplate struct {
-	Gem  string
+	Gems string
 	Sudo bool
 }
 
@@ -113,8 +117,8 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		return err
 	}
 
-	if p.config.Gem == "" {
-		p.config.Gem = DefaultGem
+	if p.config.Gems == nil {
+		p.config.Gems = DefaultGems
 	}
 
 	if p.config.Command == "" {
@@ -127,7 +131,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 
 	if p.config.InstallCommand == "" {
 		p.config.InstallCommand = "{{ if .Sudo}}sudo -E {{end}}" +
-			"gem install --quiet --no-document --no-suggestions {{.Gem}}"
+			"gem install --quiet --no-document --no-suggestions {{ .Gems }}"
 	}
 
 	if p.config.ExecuteCommand == "" {
@@ -298,7 +302,7 @@ func (p *Provisioner) installItamae(ui packer.Ui, comm packer.Communicator) erro
 	ui.Message("Installing Itamae...")
 
 	p.config.ctx.Data = &InstallTemplate{
-		Gem:  p.config.Gem,
+		Gems: strings.Join(p.config.Gems, " "),
 		Sudo: !p.config.PreventSudo,
 	}
 

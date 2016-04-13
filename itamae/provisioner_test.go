@@ -111,9 +111,10 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	if p.config.Gem != DefaultGem {
-		t.Errorf("incorrect gem, given \"%s\", want \"%s\"",
-			p.config.Gem, DefaultGem)
+	kind = reflect.ValueOf(p.config.Gems).Kind()
+	if kind != reflect.Slice || len(p.config.Gems) != 2 {
+		t.Errorf("incorrect gem, given {%v %d}, want {%v %d}",
+			kind, len(p.config.Gems), reflect.Slice, 2)
 	}
 
 	if p.config.Command != DefaultCommand {
@@ -646,7 +647,7 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 	}
 
 	p.config.ctx.Data = &InstallTemplate{
-		Gem:  p.config.Gem,
+		Gems: strings.Join(p.config.Gems, " "),
 		Sudo: !p.config.PreventSudo,
 	}
 
