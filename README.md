@@ -16,8 +16,9 @@
 6. [Building](#building)
 7. [Contributing](#contributing)
 8. [Author](#author)
-8. [Copyright](#copyright)
-9. [License](#license)
+9. [Credits](#credits)
+10. [Copyright](#copyright)
+11. [License](#license)
 
 ## Requirements
 
@@ -37,9 +38,14 @@
 
 Krzysztof Wilczynski (<krzysztof.wilczynski@linux.com>)
 
+## Credits
+
+- Ryota Arai (<ryota.arai@gmail.com>)
+- Mitchell Hashimoto (<mitchell.hashimoto@gmail.com>)
+
 ## Copyright
 
-Copyright 2016, Krzysztof Wilczynski
+Copyright 2016 Krzysztof Wilczynski
 
 ## License
 
