@@ -8,7 +8,7 @@
 
 ## Table of Contents
 
-1. [Getting Started](#getting-started)
+1. [Quick Start](#quick-start)
 2. [Requirements](#requirements)
 3. [Installation](#installation)
 4. [Documentation](#documentation)
@@ -23,7 +23,7 @@
 13. [Copyright](#copyright)
 14. [License](#license)
 
-## Getting Started
+## Quick Start
 
 ## Requirements
 
@@ -63,4 +63,5 @@ Copyright 2016 Krzysztof Wilczynski
 
 ## License
 
-This project is licensed under the terms of the Apache License, Version 2.0 license. To view the full license see the included [LICENSE](LICENSE) file.
+This project is licensed under the terms of the Apache License, Version 2.0 license.   
+To view the full license see the included [LICENSE](LICENSE) file.
