@@ -14,7 +14,6 @@ matrix:
 branches:
   only:
     - master
-    - develop
 
 before_install:
   - make tools
