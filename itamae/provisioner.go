@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/packer/common"
 	"github.com/mitchellh/packer/helper/config"
@@ -41,11 +42,16 @@ const (
 	DefaultStagingDir = "/tmp/packer-itamae"
 )
 
-//
-var DefaultGems = []string{
-	"itamae",
-	"specinfra-ec2_metadata-tags",
-}
+var (
+	//
+	DefaultGems = []string{
+		"itamae",
+		"specinfra-ec2_metadata-tags",
+	}
+
+	//
+	DefaultRetrySleep = 5 * time.Second
+)
 
 //
 type Config struct {
@@ -62,6 +68,9 @@ type Config struct {
 
 	//
 	InstallCommand string `mapstructure:"install_command"`
+
+	//
+	InstallRetryTimeout time.Duration `mapstructure:"install_retry_timeout"`
 
 	//
 	SkipInstall bool `mapstructure:"skip_install"`
@@ -178,6 +187,11 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	}
 
 	//
+	if p.config.InstallRetryTimeout == 0 {
+		p.config.InstallRetryTimeout = 5 * time.Minute
+	}
+
+	//
 	if p.config.ExecuteCommand == "" {
 		p.config.ExecuteCommand = "cd {{.StagingDir}} && " +
 			"{{.Vars}} {{if .Sudo}}sudo -E {{end}}" +
@@ -254,7 +268,10 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	ui.Say("Provisioning with Itamae...")
 
 	if !p.config.SkipInstall {
-		if err := p.installItamae(ui, comm); err != nil {
+		err := p.retryFunc(p.config.InstallRetryTimeout, func() error {
+			return p.installItamae(ui, comm)
+		})
+		if err != nil {
 			return fmt.Errorf("Error installing Itamae: %s", err)
 		}
 	}
@@ -318,6 +335,24 @@ func (p *Provisioner) prefixPath(path, prefix string) string {
 		path = filepath.Join(prefix, path)
 	}
 	return filepath.ToSlash(path)
+}
+
+//
+func (p *Provisioner) retryFunc(timeout time.Duration, f func() error) error {
+	finish := time.After(timeout)
+	for {
+		err := f()
+		if err == nil {
+			return nil
+		}
+		log.Printf("Retrying due to error: %v", err)
+
+		select {
+		case <-finish:
+			return err
+		case <-time.After(DefaultRetrySleep):
+		}
+	}
 }
 
 //

@@ -60,6 +60,97 @@ func TestProvisionerPrepare_InvalidKey(t *testing.T) {
 	}
 }
 
+func TestProvisioner_RetryFunc(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	count := 0
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+
+	retry := func() error {
+		log.Printf("Retrying, attempt number %d", count)
+		if count == 2 {
+			return nil
+		}
+		count++
+		return fmt.Errorf("Retrying %d more times...", 2-count)
+	}
+
+	DefaultRetrySleep = 50 * time.Millisecond
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["install_retry_timeout"] = 150 * time.Millisecond
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.retryFunc(p.config.InstallRetryTimeout, retry)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	p = Provisioner{}
+	delete(config, "install_command")
+
+	count = 0
+
+	config["install_retry_timeout"] = 25 * time.Millisecond
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.retryFunc(p.config.InstallRetryTimeout, retry)
+	if err == nil {
+		t.Errorf("should be an error when retrying a function")
+	}
+}
+
+func TestProvisioner_UploadFile(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	ui := testUI(nil)
+	comm := testCommunicator()
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(filepath.Join(os.TempDir(), recipeFile.Name()))
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.uploadFile(ui, comm, os.TempDir(), recipeFile.Name())
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	err = p.uploadFile(ui, comm, os.TempDir(), "/does/not/exist")
+	if err == nil {
+		t.Errorf("should be an error when trying to upload a non-existent file")
+	}
+}
+
 func TestProvisionerPrepare_Defaults(t *testing.T) {
 	var err error
 	var p Provisioner
@@ -132,6 +223,18 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 	if kind != reflect.String || p.config.InstallCommand == "" {
 		t.Errorf("incorrect install_command, given {%v %d}, want {%v > 0}",
 			kind, len(p.config.InstallCommand), reflect.String)
+	}
+
+	func(v interface{}) {
+		if _, ok := v.(time.Duration); !ok {
+			t.Fatalf("%v", reflect.TypeOf(v).String())
+		}
+	}(p.config.InstallRetryTimeout)
+
+	kind = reflect.ValueOf(p.config.InstallRetryTimeout).Kind()
+	if kind != reflect.Int64 || p.config.InstallRetryTimeout != (5*time.Minute) {
+		t.Errorf("incorrect install_retry_timeout, given {%v %v}, want {%v %v}",
+			kind, p.config.InstallRetryTimeout, reflect.Int64, 5*time.Minute)
 	}
 
 	if p.config.SkipInstall {
@@ -764,6 +867,44 @@ func TestProvisionerProvision_InstallCommand(t *testing.T) {
 		t.Errorf("incorrect install_command, given: \"%v\", want \"%v\"",
 			p.config.InstallCommand, expected)
 	}
+
+	DefaultRetrySleep = 50 * time.Millisecond
+
+	p = Provisioner{}
+	delete(config, "install_command")
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	//
+	p.config.InstallRetryTimeout = 0
+	p.config.InstallCommand = "{{}}"
+
+	err = p.Provision(ui, comm)
+	if err == nil {
+		t.Errorf("should be an error originating from install_command")
+	}
+
+	p = Provisioner{}
+	delete(config, "install_command")
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	//
+	p.config.InstallRetryTimeout = 0
+
+	//
+	comm.StartExitStatus = 123
+
+	err = p.Provision(ui, comm)
+	if err == nil {
+		t.Errorf("should be an error originating from install_command")
+	}
 }
 
 func TestProvisionerProvision_ExecuteCommand(t *testing.T) {
@@ -813,6 +954,22 @@ func TestProvisionerProvision_ExecuteCommand(t *testing.T) {
 	if comm.StartCmd.Command != expected {
 		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
 			comm.StartCmd.Command, expected)
+	}
+
+	p = Provisioner{}
+	delete(config, "execute_command")
+
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+
+	//
+	p.config.ExecuteCommand = "{{}}"
+
+	err = p.Provision(ui, comm)
+	if err == nil {
+		t.Errorf("should be an error originating from execute_command")
 	}
 }
 
