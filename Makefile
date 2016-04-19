@@ -41,6 +41,7 @@ GPG_SIGNING_KEY :=
 	test \
 	coverage \
 	vet \
+	errors \
 	lint \
 	imports \
 	fmt \
@@ -55,7 +56,7 @@ GPG_SIGNING_KEY :=
 	vendor \
 	version
 
-all: imports fmt lint vet build
+all: imports fmt lint vet errors build
 
 help:
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
@@ -72,6 +73,7 @@ help:
 	@echo '    test               Run unit tests.'
 	@echo '    coverage           Report code tests coverage.'
 	@echo '    vet                Run go vet.'
+	@echo '    errors             Run errcheck.'
 	@echo '    lint               Run golint.'
 	@echo '    imports            Run goimports.'
 	@echo '    fmt                Run go fmt.'
@@ -86,7 +88,7 @@ help:
 	@echo '    vendor             Update and save project build time dependencies.'
 	@echo '    version            Display Go version.'
 	@echo ''
-	@echo 'Targets run by default are: imports, fmt, lint, vet and build.'
+	@echo 'Targets run by default are: imports, fmt, lint, vet, errors and build.'
 	@echo ''
 
 print-%:
@@ -111,6 +113,7 @@ clean-all: clean clean-artifacts clean-vendor
 
 tools:
 	go get golang.org/x/tools/cmd/goimports
+	go get github.com/kisielk/errcheck
 	go get github.com/golang/lint/golint
 	go get github.com/axw/gocov/gocov
 	go get github.com/matm/gocov-html
@@ -135,6 +138,9 @@ coverage: deps
 
 vet:
 	go vet -v ./...
+
+errors:
+	errcheck -ignoretests -blank ./...
 
 lint:
 	golint ./...

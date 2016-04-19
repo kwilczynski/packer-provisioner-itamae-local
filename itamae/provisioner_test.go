@@ -302,7 +302,10 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 	p = Provisioner{}
 	delete(config, "recipes")
 
-	p.Prepare(config)
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
 
 	kind = reflect.ValueOf(p.config.Recipes).Kind()
 	if kind != reflect.Slice || len(p.config.Recipes) != 0 {
@@ -397,7 +400,10 @@ func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
 		"five='six\nseven'",
 	}
 
-	p.Prepare(config)
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
 
 	expected = []string{
 		"one='two'",

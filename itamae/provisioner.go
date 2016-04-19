@@ -503,12 +503,16 @@ func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir stri
 }
 
 //
-func (p *Provisioner) uploadFile(ui packer.Ui, comm packer.Communicator, dst, src string) error {
+func (p *Provisioner) uploadFile(ui packer.Ui, comm packer.Communicator, dst, src string) (err error) {
 	f, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	ui.Message(fmt.Sprintf("Uploading file: %s", src))
 	return comm.Upload(dst, f, nil)
