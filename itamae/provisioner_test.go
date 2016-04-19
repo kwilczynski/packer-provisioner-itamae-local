@@ -303,8 +303,8 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 	delete(config, "recipes")
 
 	err = p.Prepare(config)
-	if err != nil {
-		t.Errorf("should not error, but got: %s", err)
+	if err == nil {
+		t.Errorf("should be an error if recipes list is empty")
 	}
 
 	kind = reflect.ValueOf(p.config.Recipes).Kind()
