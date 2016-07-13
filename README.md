@@ -1,7 +1,7 @@
 # Packer Provisioner Itamae
 
-[![Build Status](https://api.travis-ci.org/kwilczynski/packer-provisioner-itamae-local.png)](https://travis-ci.org/kwilczynski/packer-provisioner-itamae-local)
-[![Go Report Card](http://goreportcard.com/badge/kwilczynski/packer-provisioner-itamae-local)](http://goreportcard.com/report/kwilczynski/packer-provisioner-itamae-local)
+[![Build Status](https://api.travis-ci.org/kwilczynski/packer-provisioner-itamae-local.svg)](https://travis-ci.org/kwilczynski/packer-provisioner-itamae-local)
+[![Go Report Card](https://goreportcard.com/badge/kwilczynski/packer-provisioner-itamae-local)](https://goreportcard.com/report/kwilczynski/packer-provisioner-itamae-local)
 [![Go Documentation](https://godoc.org/github.com/kwilczynski/packer-provisioner-itamae-local?status.png)](https://godoc.org/github.com/kwilczynski/packer-provisioner-itamae-local)
 
 ## Introduction
