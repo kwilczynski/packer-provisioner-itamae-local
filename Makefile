@@ -42,6 +42,7 @@ GPG_SIGNING_KEY :=
 	coverage \
 	vet \
 	errors \
+	static \
 	lint \
 	imports \
 	fmt \
@@ -56,7 +57,7 @@ GPG_SIGNING_KEY :=
 	vendor \
 	version
 
-all: imports fmt lint vet errors build
+all: imports fmt lint vet errors static build
 
 help:
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
@@ -74,6 +75,7 @@ help:
 	@echo '    coverage           Report code tests coverage.'
 	@echo '    vet                Run go vet.'
 	@echo '    errors             Run errcheck.'
+	@echo '    static             Run staticcheck.'
 	@echo '    lint               Run golint.'
 	@echo '    imports            Run goimports.'
 	@echo '    fmt                Run go fmt.'
@@ -112,13 +114,14 @@ clean-vendor:
 clean-all: clean clean-artifacts clean-vendor
 
 tools:
-	go get golang.org/x/tools/cmd/goimports
-	go get github.com/kisielk/errcheck
-	go get github.com/golang/lint/golint
 	go get github.com/axw/gocov/gocov
+	go get github.com/golang/lint/golint
+	go get github.com/kisielk/errcheck
 	go get github.com/matm/gocov-html
-	go get github.com/tools/godep
 	go get github.com/mitchellh/gox
+	go get github.com/tools/godep
+	go get golang.org/x/tools/cmd/goimports
+	go get honnef.co/go/staticcheck/cmd/staticcheck
 
 deps:
 	godep restore
@@ -141,6 +144,9 @@ vet:
 
 errors:
 	errcheck -ignoretests -blank ./...
+
+static:
+	staticcheck ./...
 
 lint:
 	golint ./...
