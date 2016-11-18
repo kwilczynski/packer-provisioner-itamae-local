@@ -150,7 +150,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	if Revision != "" {
 		version += fmt.Sprintf(" (%s)", Revision)
 	}
-	log.Printf(version)
+	log.Print(version)
 
 	err := config.Decode(&p.config, &config.DecodeOpts{
 		Interpolate:        true,
