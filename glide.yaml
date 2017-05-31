@@ -1,0 +1,11 @@
+package: github.com/kwilczynski/packer-provisioner-itamae-local
+import:
+- package: github.com/mitchellh/packer
+  version: v1.0.0
+  subpackages:
+  - common
+  - helper/config
+  - packer
+  - packer/plugin
+  - provisioner
+  - template/interpolate
