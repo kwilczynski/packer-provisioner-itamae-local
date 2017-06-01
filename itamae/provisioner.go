@@ -61,9 +61,6 @@ type Config struct {
 	ExecuteCommand string `mapstructure:"execute_command"`
 
 	//
-	ExtraArguments []string `mapstructure:"extra_arguments"`
-
-	//
 	PreventSudo bool `mapstructure:"prevent_sudo"`
 
 	//
@@ -91,6 +88,15 @@ type Config struct {
 	NodeYAML string `mapstructure:"node_yaml"`
 
 	//
+	Color *bool `mapstructure:"color"`
+
+	//
+	ConfigFile string `mapstructure:"config_file"`
+
+	//
+	ExtraArguments []string `mapstructure:"extra_arguments"`
+
+	//
 	Recipes []string `mapstructure:"recipes"`
 
 	//
@@ -109,15 +115,18 @@ type Provisioner struct {
 type ExecuteTemplate struct {
 	Command        string
 	Vars           string
+	Sudo           bool
 	StagingDir     string
 	LogLevel       string
 	Shell          string
 	LoginShell     bool
 	NodeJSON       string
 	NodeYAML       string
+	Color          bool
+	ColorValue     bool
+	ConfigFile     string
 	ExtraArguments string
 	Recipes        string
-	Sudo           bool
 }
 
 //
@@ -181,12 +190,14 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	if p.config.ExecuteCommand == "" {
 		p.config.ExecuteCommand = "cd {{.StagingDir}} && " +
 			"{{.Vars}} {{if .Sudo}}sudo -E {{end}}" +
-			"{{.Command}} local --detailed-exitcode --color='false' " +
+			"{{.Command}} local --detailed-exitcode " +
+			"{{if .Color}}--color='{{printf \"%t\" .ColorValue}}' {{end}}" +
 			"{{if ne .LogLevel \"\"}}--log-level='{{.LogLevel}}' {{end}}" +
 			"{{if ne .Shell \"\"}}--shell='{{.Shell}}' {{end}}" +
 			"{{if .LoginShell}}--login-shell {{end}}" +
 			"{{if ne .NodeJSON \"\"}}--node-json='{{.NodeJSON}}' {{end}}" +
 			"{{if ne .NodeYAML \"\"}}--node-yaml='{{.NodeYAML}}' {{end}}" +
+			"{{if ne .ConfigFile \"\"}}--config='{{.ConfigFile}}' {{end}}" +
 			"{{if ne .ExtraArguments \"\"}}{{.ExtraArguments}} {{end}}" +
 			"{{.Recipes}}"
 	}
@@ -201,23 +212,20 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 
 	var errs *packer.MultiError
 
-	if p.config.SourceDir != "" {
-		if err := p.validateDirConfig(p.config.SourceDir, "source_directory"); err != nil {
-			errs = packer.MultiErrorAppend(errs, err)
+	for idx, kv := range p.config.Vars {
+		vs := strings.SplitN(kv, "=", 2)
+		if len(vs) != 2 || vs[0] == "" {
+			errs = packer.MultiErrorAppend(errs,
+				fmt.Errorf("Environment variable not in format 'key=value': %s", kv))
+		} else {
+			vs[1] = strings.Replace(vs[1], "'", `'"'"'`, -1)
+			p.config.Vars[idx] = fmt.Sprintf("%s='%s'", vs[0], vs[1])
 		}
 	}
 
-	if p.config.Recipes == nil {
-		errs = packer.MultiErrorAppend(errs,
-			fmt.Errorf("A list of recipes must be specified."))
-	} else if len(p.config.Recipes) == 0 {
-		errs = packer.MultiErrorAppend(errs,
-			fmt.Errorf("A list of recipes cannot be empty."))
-	} else {
-		for idx, path := range p.config.Recipes {
-			if err := p.validateFileConfig(path, fmt.Sprintf("recipes[%d]", idx)); err != nil {
-				errs = packer.MultiErrorAppend(errs, err)
-			}
+	if p.config.SourceDir != "" {
+		if err := p.validateDirConfig(p.config.SourceDir, "source_directory"); err != nil {
+			errs = packer.MultiErrorAppend(errs, err)
 		}
 	}
 
@@ -233,14 +241,23 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		}
 	}
 
-	for idx, kv := range p.config.Vars {
-		vs := strings.SplitN(kv, "=", 2)
-		if len(vs) != 2 || vs[0] == "" {
-			errs = packer.MultiErrorAppend(errs,
-				fmt.Errorf("Environment variable not in format 'key=value': %s", kv))
-		} else {
-			vs[1] = strings.Replace(vs[1], "'", `'"'"'`, -1)
-			p.config.Vars[idx] = fmt.Sprintf("%s='%s'", vs[0], vs[1])
+	if p.config.ConfigFile != "" {
+		if err := p.validateFileConfig(p.config.ConfigFile, "config_file"); err != nil {
+			errs = packer.MultiErrorAppend(errs, err)
+		}
+	}
+
+	if p.config.Recipes == nil {
+		errs = packer.MultiErrorAppend(errs,
+			fmt.Errorf("A list of recipes must be specified."))
+	} else if len(p.config.Recipes) == 0 {
+		errs = packer.MultiErrorAppend(errs,
+			fmt.Errorf("A list of recipes cannot be empty."))
+	} else {
+		for idx, path := range p.config.Recipes {
+			if err := p.validateFileConfig(path, fmt.Sprintf("recipes[%d]", idx)); err != nil {
+				errs = packer.MultiErrorAppend(errs, err)
+			}
 		}
 	}
 
@@ -409,18 +426,29 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 	envVars[1] = fmt.Sprintf("PACKER_BUILDER_TYPE='%s'", p.config.PackerBuilderType)
 	copy(envVars[2:], p.config.Vars)
 
+	var color, colorValue bool
+
+	//
+	if p.config.Color != nil {
+		color = true
+		colorValue = *p.config.Color
+	}
+
 	p.config.ctx.Data = &ExecuteTemplate{
 		Command:        p.config.Command,
 		Vars:           strings.Join(envVars, " "),
+		Sudo:           !p.config.PreventSudo,
 		StagingDir:     p.config.StagingDir,
 		LogLevel:       p.config.LogLevel,
 		Shell:          p.config.Shell,
 		LoginShell:     p.config.LoginShell,
 		NodeJSON:       p.config.NodeJSON,
 		NodeYAML:       p.config.NodeYAML,
+		Color:          color,
+		ColorValue:     colorValue,
+		ConfigFile:     p.config.ConfigFile,
 		ExtraArguments: strings.Join(p.config.ExtraArguments, " "),
 		Recipes:        strings.Join(p.config.Recipes, " "),
-		Sudo:           !p.config.PreventSudo,
 	}
 
 	command, err := interpolate.Render(p.config.ExecuteCommand, &p.config.ctx)
