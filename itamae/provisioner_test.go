@@ -269,11 +269,6 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 			kind, len(p.config.Shell), reflect.String)
 	}
 
-	if p.config.LoginShell {
-		t.Errorf("incorrect login_shell, given: \"%v\", want \"%v\"",
-			p.config.LoginShell, false)
-	}
-
 	kind = reflect.ValueOf(p.config.NodeJSON).Kind()
 	if kind != reflect.String || p.config.NodeJSON != "" {
 		t.Errorf("incorrect node_json, given {%v %d}, want {%v 0}",
@@ -1250,51 +1245,6 @@ func TestProvisionerProvision_Shell(t *testing.T) {
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--shell='/bin/bash' %s",
-		recipeFile.Name())
-
-	if comm.StartCmd.Command != expected {
-		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
-			comm.StartCmd.Command, expected)
-	}
-}
-
-func TestProvisionerProvision_LoginShell(t *testing.T) {
-	var err error
-	var p Provisioner
-
-	ui := testUI(nil)
-	comm := testCommunicator()
-	config := testConfig()
-
-	recipeFile, err := ioutil.TempFile("", "recipe.rb")
-	if err != nil {
-		t.Fatalf("unable to create temporary file: %s", err)
-	}
-	defer os.Remove(recipeFile.Name())
-
-	config["recipes"] = []string{
-		recipeFile.Name(),
-	}
-
-	config["login_shell"] = true
-	err = p.Prepare(config)
-	if err != nil {
-		t.Errorf("should not error, but got: %s", err)
-	}
-
-	p.config.PackerBuildName = "virtualbox"
-	p.config.PackerBuilderType = "iso"
-
-	err = p.Provision(ui, comm)
-	if err != nil {
-		t.Errorf("should not error, but got: %s", err)
-	}
-
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
-		"PACKER_BUILD_NAME='virtualbox' "+
-		"PACKER_BUILDER_TYPE='iso' "+
-		"sudo -E itamae local --detailed-exitcode "+
-		"--login-shell %s",
 		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {

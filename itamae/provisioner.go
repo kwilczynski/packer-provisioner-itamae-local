@@ -79,9 +79,6 @@ type Config struct {
 	Shell string `mapstructure:"shell"`
 
 	//
-	LoginShell bool `mapstructure:"login_shell"`
-
-	//
 	NodeJSON string `mapstructure:"node_json"`
 
 	//
@@ -119,7 +116,6 @@ type ExecuteTemplate struct {
 	StagingDir     string
 	LogLevel       string
 	Shell          string
-	LoginShell     bool
 	NodeJSON       string
 	NodeYAML       string
 	Color          bool
@@ -194,7 +190,6 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 			"{{if .Color}}--color='{{printf \"%t\" .ColorValue}}' {{end}}" +
 			"{{if ne .LogLevel \"\"}}--log-level='{{.LogLevel}}' {{end}}" +
 			"{{if ne .Shell \"\"}}--shell='{{.Shell}}' {{end}}" +
-			"{{if .LoginShell}}--login-shell {{end}}" +
 			"{{if ne .NodeJSON \"\"}}--node-json='{{.NodeJSON}}' {{end}}" +
 			"{{if ne .NodeYAML \"\"}}--node-yaml='{{.NodeYAML}}' {{end}}" +
 			"{{if ne .ConfigFile \"\"}}--config='{{.ConfigFile}}' {{end}}" +
@@ -441,7 +436,6 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 		StagingDir:     p.config.StagingDir,
 		LogLevel:       p.config.LogLevel,
 		Shell:          p.config.Shell,
-		LoginShell:     p.config.LoginShell,
 		NodeJSON:       p.config.NodeJSON,
 		NodeYAML:       p.config.NodeYAML,
 		Color:          color,
