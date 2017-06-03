@@ -1,4 +1,4 @@
-# Packer Provisioner Itamae
+# Packer Provisioner Itamae (local)
 
 [![Build Status](https://api.travis-ci.org/kwilczynski/packer-provisioner-itamae-local.svg)](https://travis-ci.org/kwilczynski/packer-provisioner-itamae-local)
 [![Go Report Card](https://goreportcard.com/badge/kwilczynski/packer-provisioner-itamae-local)](https://goreportcard.com/report/kwilczynski/packer-provisioner-itamae-local)
@@ -59,7 +59,7 @@ Krzysztof Wilczynski (<krzysztof.wilczynski@linux.com>)
 
 ## Copyright
 
-Copyright 2016 Krzysztof Wilczynski
+Copyright 2016-2017 Krzysztof Wilczynski
 
 ## License
 
