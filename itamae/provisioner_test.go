@@ -715,6 +715,56 @@ func TestProvisionerPrepare_NodeYAML(t *testing.T) {
 	}
 }
 
+func TestProvisionerPrepare_ConfigFile(t *testing.T) {
+	var err error
+	var p Provisioner
+
+	config := testConfig()
+
+	recipeFile, err := ioutil.TempFile("", "recipe.rb")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	if err != nil {
+		t.Fatalf("unable to create temporary file: %s", err)
+	}
+
+	defer os.Remove(recipeFile.Name())
+	defer os.Remove(configFile.Name())
+
+	err = p.Prepare(config)
+	if err == nil {
+		t.Errorf("should be an error if recipes list is missing")
+	}
+
+	config["recipes"] = []string{}
+	err = p.Prepare(config)
+	if err == nil {
+		t.Errorf("should be an error if recipes list is empty")
+	}
+
+	config["recipes"] = []string{
+		recipeFile.Name(),
+	}
+
+	config["config_file"] = os.TempDir()
+	err = p.Prepare(config)
+	if err == nil {
+		t.Errorf("should be an error if config_file points to a directory")
+	}
+
+	p = Provisioner{}
+	delete(config, "config_file")
+
+	config["config_file"] = configFile.Name()
+	err = p.Prepare(config)
+	if err != nil {
+		t.Errorf("should not error, but got: %s", err)
+	}
+}
+
 func TestProvisionerProvision_Defaults(t *testing.T) {
 	var err error
 	var p Provisioner
