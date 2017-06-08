@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -241,7 +242,8 @@ func TestProvisionerPrepare_Defaults(t *testing.T) {
 			p.config.PreventSudo, false)
 	}
 
-	if p.config.StagingDir != DefaultStagingDir {
+	ok := regexp.MustCompile(`[\w\d]+\-(?:[\d\w\-]{1,5}){1,3}\-[\w\d]+`).Match([]byte(p.config.StagingDir))
+	if !strings.Contains(p.config.StagingDir, DefaultStagingDir) || !ok {
 		t.Errorf("incorrect staging_directory, given \"%s\", want \"%s\"",
 			p.config.StagingDir, DefaultStagingDir)
 	}
@@ -814,11 +816,11 @@ func TestProvisionerProvision_Defaults(t *testing.T) {
 			installCommand, expected)
 	}
 
-	expected = fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected = fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode %s",
-		recipeFile.Name())
+		p.config.StagingDir, recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
 		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
@@ -1071,10 +1073,11 @@ func TestProvisionerProvision_EnvironmentVars(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' %s "+
 		"sudo -E itamae local --detailed-exitcode %s",
+		p.config.StagingDir,
 		strings.Join(execptedVariables, " "),
 		recipeFile.Name())
 
@@ -1201,10 +1204,11 @@ func TestProvisionerProvision_SourceDirectory(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode %s",
+		p.config.StagingDir,
 		filepath.Base(recipeFile.Name()))
 
 	if comm.StartCmd.Command != expected {
@@ -1245,11 +1249,12 @@ func TestProvisionerProvision_LogLevel(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--log-level='debug' %s",
+		p.config.StagingDir,
 		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
@@ -1290,11 +1295,12 @@ func TestProvisionerProvision_Shell(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--shell='/bin/bash' %s",
+		p.config.StagingDir,
 		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
@@ -1342,12 +1348,14 @@ func TestProvisionerProvision_NodeJSON(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--node-json='%s' %s",
-		nodeFile.Name(), recipeFile.Name())
+		p.config.StagingDir,
+		nodeFile.Name(),
+		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
 		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
@@ -1394,12 +1402,14 @@ func TestProvisionerProvision_YamlPath(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--node-yaml='%s' %s",
-		nodeFile.Name(), recipeFile.Name())
+		p.config.StagingDir,
+		nodeFile.Name(),
+		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
 		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
@@ -1456,10 +1466,11 @@ func TestProvisionerProvision_ExtraArguments(t *testing.T) {
 			"the expected arguments: \"%v\"", comm.StartCmd.Command, expected)
 	}
 
-	expected = fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected = fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode %s %s",
+		p.config.StagingDir,
 		strings.Join(arguments, " "),
 		recipeFile.Name())
 
@@ -1533,10 +1544,11 @@ func TestProvisionerProvision_Recipes(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode %s",
+		p.config.StagingDir,
 		strings.Join(recipes, " "))
 
 	if comm.StartCmd.Command != expected {
@@ -1581,10 +1593,11 @@ func TestProvisionerProvision_PreventSudo(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"itamae local --detailed-exitcode %s",
+		p.config.StagingDir,
 		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
@@ -1632,12 +1645,14 @@ func TestProvisionerProvision_ConfigFile(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--config='%s' %s",
-		configFile.Name(), recipeFile.Name())
+		p.config.StagingDir,
+		configFile.Name(),
+		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {
 		t.Errorf("incorrect execute_command, given: \"%v\", want \"%v\"",
@@ -1677,11 +1692,12 @@ func TestProvisionerProvision_Color(t *testing.T) {
 		t.Errorf("should not error, but got: %s", err)
 	}
 
-	expected := fmt.Sprintf("cd /tmp/packer-itamae && "+
+	expected := fmt.Sprintf("cd %s && "+
 		"PACKER_BUILD_NAME='virtualbox' "+
 		"PACKER_BUILDER_TYPE='iso' "+
 		"sudo -E itamae local --detailed-exitcode "+
 		"--color='false' %s",
+		p.config.StagingDir,
 		recipeFile.Name())
 
 	if comm.StartCmd.Command != expected {

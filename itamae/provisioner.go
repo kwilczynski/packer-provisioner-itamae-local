@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/packer/common"
+	"github.com/mitchellh/packer/common/uuid"
 	"github.com/mitchellh/packer/helper/config"
 	"github.com/mitchellh/packer/packer"
 	"github.com/mitchellh/packer/provisioner"
@@ -202,7 +203,7 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 	}
 
 	if p.config.StagingDir == "" {
-		p.config.StagingDir = DefaultStagingDir
+		p.config.StagingDir = filepath.ToSlash(filepath.Join(DefaultStagingDir, uuid.TimeOrderedUUID()))
 	}
 
 	var errs *packer.MultiError
@@ -419,6 +420,13 @@ func (p *Provisioner) executeItamae(ui packer.Ui, comm packer.Communicator) erro
 	envVars := make([]string, len(p.config.Vars)+2)
 	envVars[0] = fmt.Sprintf("PACKER_BUILD_NAME='%s'", p.config.PackerBuildName)
 	envVars[1] = fmt.Sprintf("PACKER_BUILDER_TYPE='%s'", p.config.PackerBuilderType)
+
+	//
+	httpAddr := common.GetHTTPAddr()
+	if httpAddr != "" {
+		envVars[3] = fmt.Sprintf("PACKER_HTTP_ADDR='%s'", httpAddr)
+	}
+
 	copy(envVars[2:], p.config.Vars)
 
 	var color, colorValue bool
