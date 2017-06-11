@@ -16,6 +16,8 @@ LDFLAGS := -X github.com/kwilczynski/$(TARGET)/itamaelocal.Revision=$(REV)$(CHAN
 
 GPG_SIGNING_KEY ?=
 
+.SUFFIXES:
+
 .PHONY: \
 	help \
 	default \
@@ -122,10 +124,10 @@ tools:
 deps:
 	glide --quiet --no-color install
 
-test: deps
+test:
 	go test -v $(PACKAGES)
 
-coverage: deps
+coverage:
 	gocov test $(PACKAGES) > $(CURDIR)/coverage.out 2>/dev/null
 	gocov report $(CURDIR)/coverage.out
 	if [[ -z "$$CI" ]]; then \
@@ -214,7 +216,7 @@ fmt:
 env:
 	@go env
 
-build: deps
+build:
 	go build \
 		-ldflags "$(LDFLAGS)" \
 		-o "$(TARGET)" .
@@ -260,7 +262,7 @@ check:
 		exit 1; \
 	fi
 
-vendor: deps
+vendor:
 	glide --quiet --no-color update
 
 version:
