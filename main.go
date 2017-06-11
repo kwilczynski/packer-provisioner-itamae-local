@@ -26,7 +26,7 @@ func main() {
 				version += fmt.Sprintf(" (%s)", itamaelocal.Revision)
 			}
 			fmt.Println(version)
-		case "-version", "--version":
+		case "-v", "-version", "--version":
 			fmt.Printf("%s\n", itamaelocal.Version)
 		}
 		os.Exit(0)
