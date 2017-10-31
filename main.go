@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/packer/packer/plugin"
 	"github.com/kwilczynski/packer-provisioner-itamae-local/itamae"
-	"github.com/mitchellh/packer/packer/plugin"
 )
 
 func main() {

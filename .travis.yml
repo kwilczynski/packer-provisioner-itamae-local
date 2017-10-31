@@ -23,7 +23,7 @@ before_install:
   - make tools
 
 install:
-  - make deps
+  - make vendor
 
 before_script:
   - make clean

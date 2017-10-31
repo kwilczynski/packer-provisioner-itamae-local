@@ -61,7 +61,7 @@ help:
 	@echo '    clean-releases     Remove releases only.'
 	@echo '    clean-vendor       Remove content of the vendor directory.'
 	@echo '    tools              Install tools needed by the project.'
-	@echo '    deps               Download and install build time dependencies.'
+	@echo '    deps               Update and save project build time dependencies.'
 	@echo '    test               Run unit tests.'
 	@echo '    coverage           Report code tests coverage.'
 	@echo '    vet                Run go vet.'
@@ -79,7 +79,7 @@ help:
 	@echo '    package-release    Package release and compress artifacts.'
 	@echo '    sign-release       Sign release and generate checksums.'
 	@echo '    check              Verify compiled binary.'
-	@echo '    vendor             Update and save project build time dependencies.'
+	@echo '    vendor             Download and install build time dependencies.'
 	@echo '    version            Display Go version.'
 	@echo ''
 	@echo 'Targets run by default are: imports, fmt, lint, vet, errors, assignments, static and build.'
@@ -109,8 +109,8 @@ tools:
 	for name in zip shasum gpg; do \
 		which $$name &>/dev/null || (echo "Please install $$name to continue."; exit 1); \
 	done
-	which glide &>/dev/null; if (( $$? > 0)); then \
-		go get github.com/Masterminds/glide; \
+	which dep &>/dev/null; if (( $$? > 0)); then \
+		go get github.com/golang/dep/cmd/dep; \
 	fi
 	go get github.com/axw/gocov/gocov
 	go get github.com/golang/lint/golint
@@ -122,7 +122,8 @@ tools:
 	go get honnef.co/go/tools/cmd/staticcheck
 
 deps:
-	glide --quiet --no-color install
+	dep ensure -update
+	dep prune
 
 test:
 	go test -v $(PACKAGES)
@@ -221,7 +222,7 @@ build:
 		-ldflags "$(LDFLAGS)" \
 		-o "$(TARGET)" .
 
-build-all: deps
+build-all: vendor
 	mkdir -p $(CURDIR)/artifacts/$(VERSION)
 	gox \
 		-os "$(OS)" -arch "$(ARCH)" \
@@ -263,7 +264,7 @@ check:
 	fi
 
 vendor:
-	glide --quiet --no-color update
+	dep ensure -vendor-only
 
 version:
 	@go version
