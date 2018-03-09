@@ -77,7 +77,6 @@ temp
 
 artifacts
 releases
-vendor
 
 packer_cache
 virtualfloppy.vfd
