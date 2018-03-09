@@ -123,7 +123,6 @@ tools:
 
 deps:
 	dep ensure -update
-	dep prune
 
 test:
 	go test -v $(PACKAGES)
