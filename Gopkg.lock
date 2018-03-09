@@ -17,42 +17,57 @@
   branch = "master"
   name = "github.com/hashicorp/go-cleanhttp"
   packages = ["."]
-  revision = "3573b8b52aa7b37b9358d966a898feb387f62437"
+  revision = "d5fe4b57a186c716b0e00b8c301cbd9b4182694d"
 
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
-  revision = "83588e72410abfbe4df460eeb6f30841ae47d4c4"
+  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
 
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/go-uuid"
   packages = ["."]
-  revision = "64130c7a86d732268a38cb04cfbaf0cc987fda98"
+  revision = "27454136f0364f2d44b1276c552d69105cf8c498"
 
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
-  revision = "fc61389e27c71d120f87031ca8c88a3428f372dd"
+  revision = "4fe82ae3040f80a03d04d2cccb5606a626b8e1ee"
 
 [[projects]]
   name = "github.com/hashicorp/packer"
-  packages = ["common","common/uuid","helper/config","packer","packer/plugin","packer/rpc","provisioner","template","template/interpolate","version"]
-  revision = "b58e6c31d96cea0308ad894799244d8f016475ed"
-  version = "v1.1.1"
+  packages = [
+    "common",
+    "common/uuid",
+    "helper/config",
+    "helper/multistep",
+    "packer",
+    "packer/plugin",
+    "packer/rpc",
+    "provisioner",
+    "template",
+    "template/interpolate",
+    "version"
+  ]
+  revision = "0b740f508f4f9b63442879a8c8f7a197b9a83dc1"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/yamux"
   packages = ["."]
-  revision = "f5742cb6b85602e7fa834e9d5d91a7d7fa850824"
+  revision = "683f49123a33db61abfb241b7ac5e4af4dc54d55"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/go-fs"
-  packages = [".","fat"]
+  packages = [
+    ".",
+    "fat"
+  ]
   revision = "7bae45d9a684750e82b97ff320c82556614e621b"
 
 [[projects]]
@@ -65,13 +80,7 @@
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "06020f85339e21b2478f756a78e295255ffa4d6a"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mitchellh/multistep"
-  packages = ["."]
-  revision = "391576a156a54cfbb4cf5d5eda40cf6ffa3e3a4d"
+  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
   branch = "master"
@@ -80,10 +89,10 @@
   revision = "63d60e9d0dbc60cf9164e6510889b0db6683d98c"
 
 [[projects]]
-  branch = "master"
   name = "github.com/ugorji/go"
   packages = ["codec"]
-  revision = "d03304bb1d83c196fd3017dca37e89a4504b3676"
+  revision = "9831f2c3ac1068a78f50999a30db84270f647af6"
+  version = "v1.1"
 
 [solve-meta]
   analyzer-name = "dep"
