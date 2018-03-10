@@ -25,6 +25,7 @@ GPG_SIGNING_KEY ?=
 	clean-artifacts \
 	clean-releases \
 	clean-vendor \
+	clean-all \
 	tools \
 	deps \
 	test \
@@ -47,40 +48,16 @@ GPG_SIGNING_KEY ?=
 	vendor \
 	version
 
+default: all
 
 all: imports fmt lint vet errors assignments static build
 
-help:
+help: ## Show this help screen.
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''
 	@echo 'Available targets are:'
 	@echo ''
-	@echo '    help               Show this help screen.'
-	@echo '    clean              Remove binaries, artifacts and releases.'
-	@echo '    clean-artifacts    Remove build artifacts only.'
-	@echo '    clean-releases     Remove releases only.'
-	@echo '    clean-vendor       Remove content of the vendor directory.'
-	@echo '    tools              Install tools needed by the project.'
-	@echo '    deps               Update and save project build time dependencies.'
-	@echo '    test               Run unit tests.'
-	@echo '    coverage           Report code tests coverage.'
-	@echo '    vet                Run go vet.'
-	@echo '    errors             Run errcheck.'
-	@echo '    assignments        Run ineffassign.'
-	@echo '    static             Run staticcheck.'
-	@echo '    lint               Run golint.'
-	@echo '    imports            Run goimports.'
-	@echo '    fmt                Run gofmt.'
-	@echo '    env                Display Go environment.'
-	@echo '    build              Build project for current platform.'
-	@echo '    build-all          Build project for all supported platforms.'
-	@echo '    doc                Start Go documentation server on port 8080.'
-	@echo '    release            Package and sing project for release.'
-	@echo '    package-release    Package release and compress artifacts.'
-	@echo '    sign-release       Sign release and generate checksums.'
-	@echo '    check              Verify compiled binary.'
-	@echo '    vendor             Download and install build time dependencies.'
-	@echo '    version            Display Go version.'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN { FS = ":.*?## " }; { printf "%-30s %s\n", $$1, $$2 }'
 	@echo ''
 	@echo 'Targets run by default are: imports, fmt, lint, vet, errors, assignments, static and build.'
 	@echo ''
@@ -88,24 +65,24 @@ help:
 print-%:
 	@echo $* = $($*)
 
-clean: clean-artifacts clean-releases
+clean: clean-artifacts clean-releases ## Remove binaries, artifacts and releases.
 	go clean -i ./...
 	rm -f \
 		$(CURDIR)/coverage.* \
 		$(CURDIR)/$(TARGET)_*
 
-clean-artifacts:
+clean-artifacts: ## Remove build artifacts only.
 	rm -Rf artifacts/*
 
-clean-releases:
+clean-releases: ## Remove releases only.
 	rm -Rf releases/*
 
-clean-vendor:
+clean-vendor: ## Remove content of the vendor directory.
 	find $(VENDOR) -type d -print0 2>/dev/null | xargs -0 rm -Rf
 
-clean-all: clean clean-artifacts clean-vendor
+clean-all: clean clean-artifacts clean-vendor ## Remove binaries, artifacts, releases and build time dependencies.
 
-tools:
+tools: ## Install tools needed by the project.
 	for name in zip shasum gpg; do \
 		which $$name &>/dev/null || (echo "Please install $$name to continue."; exit 1); \
 	done
@@ -121,13 +98,13 @@ tools:
 	go get golang.org/x/tools/cmd/goimports
 	go get honnef.co/go/tools/cmd/staticcheck
 
-deps:
+deps: ## Update and save project build time dependencies.
 	dep ensure -update
 
-test:
+test: ## Run unit tests.
 	go test -v $(PACKAGES)
 
-coverage:
+coverage: ## Report code tests coverage.
 	gocov test $(PACKAGES) > $(CURDIR)/coverage.out 2>/dev/null
 	gocov report $(CURDIR)/coverage.out
 	if [[ -z "$$CI" ]]; then \
@@ -137,7 +114,7 @@ coverage:
 	  	fi; \
 	fi
 
-vet:
+vet: ## Run go vet.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "vet" || echo 1))
 	@go vet -v $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -148,7 +125,7 @@ vet:
 		fi; \
 	fi
 
-errors:
+errors: ## Run errcheck.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "errors" || echo 1))
 	@errcheck -ignoretests -blank $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -159,7 +136,7 @@ errors:
 		fi; \
 	fi
 
-assignments:
+assignments: ## Run ineffassign.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "assignments" || echo 1))
 	@ineffassign . $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -170,7 +147,7 @@ assignments:
 		fi; \
 	fi
 
-static:
+static: ## Run staticcheck.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "static" || echo 1))
 	@staticcheck $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -180,7 +157,7 @@ static:
 			exit $$?; \
 		fi; \
 	fi
-lint:
+lint: ## Run golint.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "lint" || echo 1))
 	@golint $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -191,7 +168,7 @@ lint:
 		fi; \
 	fi
 
-imports:
+imports: ## Run goimports.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "imports" || echo 1))
 	@goimports -l $(FILES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -202,7 +179,7 @@ imports:
 		fi; \
 	fi
 
-fmt:
+fmt: ## Run gofmt.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "fmt" || echo 1))
 	@gofmt -l $(FILES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
@@ -213,15 +190,15 @@ fmt:
 		fi; \
 	fi
 
-env:
+env: ## Display Go environment.
 	@go env
 
-build:
+build: ## Build project for current platform.
 	go build \
 		-ldflags "$(LDFLAGS)" \
 		-o "$(TARGET)" .
 
-build-all: vendor
+build-all: vendor ## Build project for all supported platforms.
 	mkdir -p $(CURDIR)/artifacts/$(VERSION)
 	gox \
 		-os "$(OS)" -arch "$(ARCH)" \
@@ -229,12 +206,12 @@ build-all: vendor
 		-output "$(CURDIR)/artifacts/$(VERSION)/{{.OS}}_{{.Arch}}/$(TARGET)" .
 	cp -f $(CURDIR)/artifacts/$(VERSION)/$$(go env GOOS)_$$(go env GOARCH)/$(TARGET) .
 
-doc:
+doc: ## Start Go documentation server on port 8080.
 	godoc -http=:8080 -index
 
-release: build-all package-release sign-release
+release: build-all package-release sign-release ## Package and sing project for release.
 
-package-release:
+package-release: ## Package release and compress artifacts.
 	@test -x $(CURDIR)/artifacts/$(VERSION) || (echo 'Please make a release first.'; exit 1)
 	mkdir -p $(CURDIR)/releases/$(VERSION)
 	for release in $$(find $(CURDIR)/artifacts/$(VERSION) -mindepth 1 -maxdepth 1 -type d 2>/dev/null); do \
@@ -244,7 +221,7 @@ package-release:
 		popd &>/dev/null; \
 	done
 
-sign-release:
+sign-release: ## Sign release and generate checksums.
 	@test -x $(CURDIR)/artifacts/$(VERSION) || (echo 'Please make a release first.'; exit 1)
 	pushd $(CURDIR)/releases/$(VERSION) &>/dev/null; \
 	shasum -a 256 -b $(TARGET)_* > SHA256SUMS; \
@@ -255,15 +232,15 @@ sign-release:
 	fi; \
 	popd &>/dev/null
 
-check:
+check: ## Verify compiled binary.
 	@if $(CURDIR)/$(TARGET) --version | grep -qF '$(VERSION)'; then \
 		echo "$(CURDIR)/$(TARGET): OK"; \
 	else \
 		exit 1; \
 	fi
 
-vendor:
+vendor: ## Download and install build time dependencies.
 	dep ensure -vendor-only
 
-version:
+version: ## Display Go version.
 	@go version
