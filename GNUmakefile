@@ -57,7 +57,8 @@ help: ## Show this help screen.
 	@echo ''
 	@echo 'Available targets are:'
 	@echo ''
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN { FS = ":.*?## " }; { printf "%-30s %s\n", $$1, $$2 }'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN { FS = ":.*?## " }; { printf "%-30s %s\n", $$1, $$2 }'
 	@echo ''
 	@echo 'Targets run by default are: imports, fmt, lint, vet, errors, assignments, static and build.'
 	@echo ''
