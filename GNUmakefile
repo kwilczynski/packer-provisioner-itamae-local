@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+VERBOSE := $(or $(VERBOSE),$(V))
 
 REV := $(shell git rev-parse HEAD)
 CHANGES := $(shell test -n "$$(git status --porcelain)" && echo '+CHANGES' || true)
@@ -48,9 +49,13 @@ GPG_SIGNING_KEY ?=
 	vendor \
 	version
 
+ifneq ($(VERBOSE), 1)
+.SILENT:
+endif
+
 default: all
 
-all: imports fmt lint vet errors assignments static build
+all: lint build
 
 help: ## Show this help screen.
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
@@ -60,7 +65,7 @@ help: ## Show this help screen.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN { FS = ":.*?## " }; { printf "%-30s %s\n", $$1, $$2 }'
 	@echo ''
-	@echo 'Targets run by default are: imports, fmt, lint, vet, errors, assignments, static and build.'
+	@echo 'Targets run by default are lint and build.'
 	@echo ''
 
 print-%:
@@ -85,19 +90,15 @@ clean-all: clean clean-artifacts clean-vendor ## Remove binaries, artifacts, rel
 
 tools: ## Install tools needed by the project.
 	for name in zip shasum gpg; do \
-		which $$name &>/dev/null || (echo "Please install $$name to continue."; exit 1); \
+		which $$name &>/dev/null || (echo "Please install '$$name' to continue."; exit 1); \
 	done
 	which dep &>/dev/null; if (( $$? > 0)); then \
 		go get github.com/golang/dep/cmd/dep; \
 	fi
+	go get github.com/alecthomas/gometalinter
 	go get github.com/axw/gocov/gocov
-	go get github.com/golang/lint/golint
-	go get github.com/gordonklaus/ineffassign
-	go get github.com/kisielk/errcheck
 	go get github.com/matm/gocov-html
 	go get github.com/mitchellh/gox
-	go get golang.org/x/tools/cmd/goimports
-	go get honnef.co/go/tools/cmd/staticcheck
 
 deps: ## Update and save project build time dependencies.
 	dep ensure -update
@@ -115,79 +116,14 @@ coverage: ## Report code tests coverage.
 	  	fi; \
 	fi
 
-vet: ## Run go vet.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "vet" || echo 1))
-	@go vet -v $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "go vet found number of issues. Run 'make vet' to check directly."; \
-		else \
-			exit $$?; \
-		fi; \
-	fi
-
-errors: ## Run errcheck.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "errors" || echo 1))
-	@errcheck -ignoretests -blank $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "errcheck found number of issues. Run 'make errors' to check directly."; \
-		else \
-			exit $$?; \
-		fi; \
-	fi
-
-assignments: ## Run ineffassign.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "assignments" || echo 1))
-	@ineffassign . $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "ineffassign found number of issues. Run 'make assignments' to check directly."; \
-		else \
-			exit $$?; \
-		fi; \
-	fi
-
-static: ## Run staticcheck.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "static" || echo 1))
-	@staticcheck $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "staticcheck found number of issues. Run 'make static' to check directly."; \
-		else \
-			exit $$?; \
-		fi; \
-	fi
-lint: ## Run golint.
+lint: ## Run lint tests suite.
 	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "lint" || echo 1))
-	@golint $(PACKAGES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
+	gometalinter ./... $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
 	if (( $$? > 0 )); then \
 		if [[ -n "$(QUIET)" ]]; then \
-			echo "golint found number of issues. Run 'make lint' to check directly."; \
+			echo "Found number of issues when running lint tests suite. Run 'make lint' to check directly."; \
 		else \
-			exit $$?; \
-		fi; \
-	fi
-
-imports: ## Run goimports.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "imports" || echo 1))
-	@goimports -l $(FILES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "goimports found number of issues. Run 'make imports' to check directly."; \
-		else \
-			exit $$?; \
-		fi; \
-	fi
-
-fmt: ## Run gofmt.
-	$(eval QUIET := $(shell test "$(MAKECMDGOALS)" == "fmt" || echo 1))
-	@gofmt -l $(FILES) $(shell test -z "$(QUIET)" || echo '&>/dev/null'); \
-	if (( $$? > 0 )); then \
-		if [[ -n "$(QUIET)" ]]; then \
-			echo "gofmt found number of issues. Run 'make fmt' to check directly."; \
-		else \
-			exit $$?; \
+			test -z "$(VERBOSE)" || exit $$?; \
 		fi; \
 	fi
 
