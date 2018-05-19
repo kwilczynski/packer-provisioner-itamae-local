@@ -31,13 +31,7 @@ GPG_SIGNING_KEY ?=
 	deps \
 	test \
 	coverage \
-	vet \
-	errors \
-	assignments \
-	static \
 	lint \
-	imports \
-	fmt \
 	env \
 	build \
 	build-all \
